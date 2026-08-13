@@ -8,18 +8,35 @@ const screens = {
 };
 
 const elements = {
+    // Menu - Create Section
     playerNameInput: document.getElementById('playerNameInput'),
     nameError: document.getElementById('nameError'),
     createRoomBtn: document.getElementById('createRoomBtn'),
-    joinRoomBtn: document.getElementById('joinRoomBtn'),
+    
+    // Menu - Join Section
+    joinNameInput: document.getElementById('joinNameInput'),
+    joinNameError: document.getElementById('joinNameError'),
     roomCodeInput: document.getElementById('roomCodeInput'),
-    roomCodeDisplay: document.getElementById('roomCodeDisplay'),
-    copyCodeBtn: document.getElementById('copyCodeBtn'),
-    cancelWaitBtn: document.getElementById('cancelWaitBtn'),
+    codeError: document.getElementById('codeError'),
+    joinRoomBtn: document.getElementById('joinRoomBtn'),
+    
+    // Dropdown
+    gameModeSelect: document.getElementById('gameModeSelect'),
+    createSection: document.getElementById('createSection'),
+    joinSection: document.getElementById('joinSection'),
+    
+    // How to Play
     howToPlayBtn: document.getElementById('howToPlayBtn'),
     howToPlayModal: document.getElementById('howToPlayModal'),
     closeHowToBtn: document.getElementById('closeHowToBtn'),
     closeHowToTopBtn: document.getElementById('closeHowToTopBtn'),
+    
+    // Waiting
+    roomCodeDisplay: document.getElementById('roomCodeDisplay'),
+    copyCodeBtn: document.getElementById('copyCodeBtn'),
+    cancelWaitBtn: document.getElementById('cancelWaitBtn'),
+    
+    // Game
     board: document.getElementById('board'),
     playerName: document.getElementById('playerName'),
     opponentName: document.getElementById('opponentName'),
@@ -36,6 +53,8 @@ const elements = {
     lastMove: document.getElementById('lastMove'),
     restartBtn: document.getElementById('restartBtn'),
     leaveBtn: document.getElementById('leaveBtn'),
+    
+    // Game Over
     gameOverModal: document.getElementById('gameOverModal'),
     gameOverEmoji: document.getElementById('gameOverEmoji'),
     gameOverTitle: document.getElementById('gameOverTitle'),
@@ -46,13 +65,19 @@ const elements = {
     playAgainBtn: document.getElementById('playAgainBtn'),
     backToMenuBtn: document.getElementById('backToMenuBtn'),
     confettiContainer: document.getElementById('confettiContainer'),
+    
+    // Toast & Status
     toast: document.getElementById('toast'),
     connectionStatus: document.getElementById('connectionStatus'),
+    
+    // Chat
     chatBody: document.getElementById('chatBody'),
     chatMessages: document.getElementById('chatMessages'),
     chatInput: document.getElementById('chatInput'),
     sendMessageBtn: document.getElementById('sendMessageBtn'),
     toggleChatBtn: document.getElementById('toggleChatBtn'),
+    
+    // Timer
     timerDisplay: document.getElementById('timerDisplay'),
     timerBar: document.getElementById('timerBar')
 };
@@ -84,10 +109,11 @@ const translations = {
         notYourTurn: "Not your turn!",
         columnFull: 'Column full!',
         gameNotActive: 'Game not active',
-        enterValidCode: 'Enter valid code',
-        nameRequired: 'Name is required!',
-        nameTooShort: 'Min 2 characters!',
-        enterName: 'Enter your name!',
+        enterValidCode: '❌ Enter valid 6-character code!',
+        nameRequired: '❌ Name is required!',
+        nameTooShort: '❌ Min 2 characters!',
+        enterName: '⚠️ Enter your name!',
+        selectOption: '⚠️ Select game mode first!',
         gameStarted: 'Game started!',
         youWin: 'You won!',
         youLose: 'wins!',
@@ -111,10 +137,11 @@ const translations = {
         notYourTurn: 'የእርስዎ ተራ አይደለም!',
         columnFull: 'አምዱ ሞልቷል!',
         gameNotActive: 'ጨዋታ ንቁ አይደለም',
-        enterValidCode: 'ትክክለኛ ኮድ ያስገቡ',
-        nameRequired: 'ስም ያስፈልጋል!',
-        nameTooShort: 'ቢያንስ 2 ቁምፊዎች!',
-        enterName: 'ስምዎን ያስገቡ!',
+        enterValidCode: '❌ ትክክለኛ ባለ 6-ቁምፊ ኮድ ያስገቡ!',
+        nameRequired: '❌ ስም ያስፈልጋል!',
+        nameTooShort: '❌ ቢያንስ 2 ቁምፊዎች!',
+        enterName: '⚠️ ስምዎን ያስገቡ!',
+        selectOption: '⚠️ መጀመሪያ የጨዋታ ሁነታ ይምረጡ!',
         gameStarted: 'ጨዋታ ተጀምሯል!',
         youWin: 'አሸንፈዋል!',
         youLose: 'አሸንፏል!',
@@ -145,10 +172,17 @@ window.setLanguage = function(lang) {
     document.querySelectorAll('[data-en][data-am]').forEach(el => {
         el.textContent = el.getAttribute(`data-${lang}`);
     });
-    const nameInput = document.getElementById('playerNameInput');
-    if (nameInput) {
-        nameInput.placeholder = nameInput.getAttribute(`data-${lang}-placeholder`) || '';
+    
+    // Update placeholders
+    const createNameInput = document.getElementById('playerNameInput');
+    const joinNameInput = document.getElementById('joinNameInput');
+    if (createNameInput) {
+        createNameInput.placeholder = createNameInput.getAttribute(`data-${lang}-placeholder`) || '';
     }
+    if (joinNameInput) {
+        joinNameInput.placeholder = joinNameInput.getAttribute(`data-${lang}-placeholder`) || '';
+    }
+    
     updateTurnIndicator();
     localStorage.setItem('connectFourLanguage', lang);
 };
@@ -273,7 +307,6 @@ function updateBoard() {
     });
 }
 
-// Turn Indicator
 function updateTurnIndicator() {
     const t = translations[currentLanguage];
     elements.turnIndicator.className = 'turn-indicator';
@@ -326,11 +359,6 @@ function addChatMessage(data) {
     bubble.textContent = data.message;
     msgDiv.appendChild(bubble);
     
-    const timeSpan = document.createElement('span');
-    timeSpan.className = 'message-time';
-    timeSpan.textContent = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    msgDiv.appendChild(timeSpan);
-    
     elements.chatMessages.appendChild(msgDiv);
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
@@ -339,7 +367,6 @@ function clearChat() {
     elements.chatMessages.innerHTML = '';
 }
 
-// Toast
 function showToast(message, type = 'error') {
     elements.toast.textContent = message;
     elements.toast.className = 'toast';
@@ -350,119 +377,166 @@ function showToast(message, type = 'error') {
     elements.toast.timeout = setTimeout(() => elements.toast.classList.remove('show'), 3000);
 }
 
-// Validation
-function validateName() {
-    const t = translations[currentLanguage];
-    const name = elements.playerNameInput.value.trim();
-    elements.nameError.textContent = '';
-    elements.nameError.style.display = 'block';
-    elements.playerNameInput.style.borderColor = '';
-    
-    if (!name) {
-        elements.nameError.textContent = t.nameRequired;
-        elements.nameError.style.color = '#ff4757';
-        elements.playerNameInput.style.borderColor = '#ff4757';
-        elements.playerNameInput.focus();
-        showToast(t.enterName, 'error');
-        playErrorSound();
-        return false;
-    }
-    if (name.length < 2) {
-        elements.nameError.textContent = t.nameTooShort;
-        elements.nameError.style.color = '#ff4757';
-        elements.playerNameInput.style.borderColor = '#ff4757';
-        elements.playerNameInput.focus();
-        showToast(t.nameTooShort, 'error');
-        playErrorSound();
-        return false;
-    }
-    
-    elements.nameError.textContent = '✅';
-    elements.nameError.style.color = '#4CAF50';
-    elements.playerNameInput.style.borderColor = '#4CAF50';
-    return true;
-}
-
-// Screen
 function showScreen(name) {
     Object.keys(screens).forEach(k => screens[k].classList.remove('active'));
     screens[name].classList.add('active');
 }
 
-// Confetti
 function createConfetti() {
     elements.confettiContainer.innerHTML = '';
-    const colors = ['#FF4757', '#FFA502', '#4CAF50', '#6C63FF', '#FF6B81', '#FFC048'];
-    for (let i = 0; i < 50; i++) {
+    const colors = ['#FF4757', '#FFA502', '#4CAF50', '#6C63FF'];
+    for (let i = 0; i < 40; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
         confetti.style.left = Math.random() * 100 + '%';
-        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
-        confetti.style.animationDelay = Math.random() * 2 + 's';
-        confetti.style.animationDuration = (Math.random() * 1 + 1) + 's';
+        confetti.style.background = colors[i % 4];
+        confetti.style.animationDelay = Math.random() + 's';
         elements.confettiContainer.appendChild(confetti);
     }
 }
 
-// ============ EVENT LISTENERS ============
+// ============ DROPDOWN HANDLER ============
+elements.gameModeSelect.addEventListener('change', () => {
+    const selectedMode = elements.gameModeSelect.value;
+    
+    // Hide both sections
+    elements.createSection.classList.add('hidden');
+    elements.joinSection.classList.add('hidden');
+    
+    // Clear previous errors
+    if (elements.nameError) elements.nameError.textContent = '';
+    if (elements.joinNameError) elements.joinNameError.textContent = '';
+    if (elements.codeError) elements.codeError.textContent = '';
+    
+    // Show selected section
+    if (selectedMode === 'create') {
+        elements.createSection.classList.remove('hidden');
+        setTimeout(() => elements.playerNameInput.focus(), 100);
+    } else if (selectedMode === 'join') {
+        elements.joinSection.classList.remove('hidden');
+        setTimeout(() => elements.joinNameInput.focus(), 100);
+    }
+});
 
-// How to Play Button
+// ============ HOW TO PLAY ============
 elements.howToPlayBtn.addEventListener('click', () => {
-    console.log('How to Play clicked');
     playClickSound();
     elements.howToPlayModal.classList.add('active');
 });
 
-// Close How to Play - Got it button
 elements.closeHowToBtn.addEventListener('click', () => {
-    playClickSound();
     elements.howToPlayModal.classList.remove('active');
 });
 
-// Close How to Play - X button
 if (elements.closeHowToTopBtn) {
     elements.closeHowToTopBtn.addEventListener('click', () => {
         elements.howToPlayModal.classList.remove('active');
     });
 }
 
-// Close modal when clicking outside
 elements.howToPlayModal.addEventListener('click', (e) => {
     if (e.target === elements.howToPlayModal) {
         elements.howToPlayModal.classList.remove('active');
     }
 });
 
-// Close with Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        elements.howToPlayModal.classList.remove('active');
-        elements.gameOverModal.classList.remove('active');
-    }
-});
-
-// Create Room
+// ============ CREATE GAME ============
 elements.createRoomBtn.addEventListener('click', () => {
     playClickSound();
-    if (!validateName()) return;
-    myName = elements.playerNameInput.value.trim();
+    
+    // Check if dropdown is selected
+    if (elements.gameModeSelect.value !== 'create') {
+        showToast(translations[currentLanguage].selectOption, 'error');
+        return;
+    }
+    
+    const name = elements.playerNameInput.value.trim();
+    
+    // Validate name
+    if (!name) {
+        elements.nameError.textContent = translations[currentLanguage].nameRequired;
+        elements.nameError.style.color = '#ff4757';
+        elements.playerNameInput.focus();
+        showToast(translations[currentLanguage].enterName, 'error');
+        playErrorSound();
+        return;
+    }
+    
+    if (name.length < 2) {
+        elements.nameError.textContent = translations[currentLanguage].nameTooShort;
+        elements.nameError.style.color = '#ff4757';
+        elements.playerNameInput.focus();
+        playErrorSound();
+        return;
+    }
+    
+    elements.nameError.textContent = '✅';
+    elements.nameError.style.color = '#4CAF50';
+    
+    myName = name;
     socket.emit('createRoom', { playerName: myName });
 });
 
-// Join Room
+// ============ JOIN GAME ============
 elements.joinRoomBtn.addEventListener('click', () => {
     playClickSound();
-    if (!validateName()) return;
-    const code = elements.roomCodeInput.value.trim().toUpperCase();
-    if (code.length !== 6) {
-        showToast(translations[currentLanguage].enterValidCode, 'error');
+    
+    // Check if dropdown is selected
+    if (elements.gameModeSelect.value !== 'join') {
+        showToast(translations[currentLanguage].selectOption, 'error');
         return;
     }
-    myName = elements.playerNameInput.value.trim();
+    
+    const name = elements.joinNameInput.value.trim();
+    const code = elements.roomCodeInput.value.trim().toUpperCase();
+    
+    // Validate name
+    if (!name) {
+        elements.joinNameError.textContent = translations[currentLanguage].nameRequired;
+        elements.joinNameError.style.color = '#ff4757';
+        elements.joinNameInput.focus();
+        showToast(translations[currentLanguage].enterName, 'error');
+        playErrorSound();
+        return;
+    }
+    
+    if (name.length < 2) {
+        elements.joinNameError.textContent = translations[currentLanguage].nameTooShort;
+        elements.joinNameError.style.color = '#ff4757';
+        elements.joinNameInput.focus();
+        playErrorSound();
+        return;
+    }
+    
+    elements.joinNameError.textContent = '✅';
+    elements.joinNameError.style.color = '#4CAF50';
+    
+    // Validate code
+    if (!code) {
+        elements.codeError.textContent = '❌ Code is required!';
+        elements.codeError.style.color = '#ff4757';
+        elements.roomCodeInput.focus();
+        playErrorSound();
+        return;
+    }
+    
+    if (code.length !== 6) {
+        elements.codeError.textContent = translations[currentLanguage].enterValidCode;
+        elements.codeError.style.color = '#ff4757';
+        elements.roomCodeInput.focus();
+        playErrorSound();
+        return;
+    }
+    
+    elements.codeError.textContent = '✅';
+    elements.codeError.style.color = '#4CAF50';
+    
+    myName = name;
     socket.emit('joinRoom', { roomCode: code, playerName: myName });
 });
 
-// Name input
+// ============ INPUT LISTENERS ============
+// Create name input
 elements.playerNameInput.addEventListener('input', () => {
     if (elements.playerNameInput.value.trim().length > 0) {
         elements.nameError.textContent = '';
@@ -470,48 +544,61 @@ elements.playerNameInput.addEventListener('input', () => {
     }
 });
 
+// Join name input
+elements.joinNameInput.addEventListener('input', () => {
+    if (elements.joinNameInput.value.trim().length > 0) {
+        elements.joinNameError.textContent = '';
+        elements.joinNameInput.style.borderColor = '';
+    }
+});
+
+// Room code input
+elements.roomCodeInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (e.target.value.length > 0) {
+        elements.codeError.textContent = '';
+        elements.roomCodeInput.style.borderColor = '';
+    }
+});
+
+// Enter key handlers
 elements.playerNameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') elements.createRoomBtn.click();
+});
+
+elements.joinNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') elements.roomCodeInput.focus();
 });
 
 elements.roomCodeInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') elements.joinRoomBtn.click();
 });
 
-elements.roomCodeInput.addEventListener('input', (e) => {
-    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-});
-
-// Chat
+// ============ CHAT EVENTS ============
 elements.sendMessageBtn.addEventListener('click', sendChatMessage);
 elements.chatInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendChatMessage();
 });
-
 elements.toggleChatBtn.addEventListener('click', () => {
     elements.chatBody.classList.toggle('collapsed');
-    elements.toggleChatBtn.classList.toggle('collapsed');
 });
 
-// Copy Code
+// ============ OTHER EVENTS ============
 elements.copyCodeBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(elements.roomCodeDisplay.textContent);
     showToast(translations[currentLanguage].codeCopied, 'success');
 });
 
-// Cancel Wait
 elements.cancelWaitBtn.addEventListener('click', () => {
     socket.emit('leaveRoom', currentRoom);
     showScreen('menu');
 });
 
-// Restart
 elements.restartBtn.addEventListener('click', () => {
     socket.emit('restartGame', currentRoom);
     elements.restartBtn.disabled = true;
 });
 
-// Leave
 elements.leaveBtn.addEventListener('click', () => {
     if (confirm(translations[currentLanguage].leave + '?')) {
         socket.emit('leaveRoom', currentRoom);
@@ -519,13 +606,11 @@ elements.leaveBtn.addEventListener('click', () => {
     }
 });
 
-// Play Again
 elements.playAgainBtn.addEventListener('click', () => {
     elements.gameOverModal.classList.remove('active');
     socket.emit('restartGame', currentRoom);
 });
 
-// Back to Menu
 elements.backToMenuBtn.addEventListener('click', () => {
     elements.gameOverModal.classList.remove('active');
     socket.emit('leaveRoom', currentRoom);
@@ -533,7 +618,6 @@ elements.backToMenuBtn.addEventListener('click', () => {
 });
 
 // ============ SOCKET EVENTS ============
-
 socket.on('connect', () => {
     elements.connectionStatus.textContent = translations[currentLanguage].connected;
     elements.connectionStatus.className = 'connection-status connected';
@@ -569,10 +653,8 @@ socket.on('gameStart', (data) => {
     opponentNameStr = data.playerNames[myColor === 'red' ? 'yellow' : 'red'];
     elements.playerName.textContent = myName;
     elements.opponentName.textContent = opponentNameStr;
-    
     elements.playerScore.textContent = data.yourScore !== undefined ? data.yourScore : 0;
     elements.opponentScore.textContent = data.opponentScore !== undefined ? data.opponentScore : 0;
-    
     elements.playerAvatarLetter.textContent = myName.charAt(0).toUpperCase();
     elements.opponentAvatarLetter.textContent = opponentNameStr.charAt(0).toUpperCase();
     clearChat();
@@ -581,9 +663,7 @@ socket.on('gameStart', (data) => {
     showScreen('game');
 });
 
-socket.on('timerStart', (data) => {
-    startTimer(data.duration);
-});
+socket.on('timerStart', (data) => startTimer(data.duration));
 
 socket.on('pieceDropped', (data) => {
     playDropSound();
@@ -605,7 +685,6 @@ socket.on('gameOver', (data) => {
     updateBoard();
     updateTurnIndicator();
     elements.restartBtn.disabled = false;
-    
     elements.playerScore.textContent = data.yourScore !== undefined ? data.yourScore : 0;
     elements.opponentScore.textContent = data.opponentScore !== undefined ? data.opponentScore : 0;
     
@@ -631,10 +710,8 @@ socket.on('gameOver', (data) => {
             elements.gameOverEmoji.textContent = '😔';
             elements.gameOverTitle.textContent = data.winnerName + ' ' + translations[currentLanguage].youLose;
             elements.winnerName.textContent = data.winnerName;
-            elements.gameOverMessage.textContent = data.winnerName + ' ' + translations[currentLanguage].youLose;
         }
     }
-    
     setTimeout(() => elements.gameOverModal.classList.add('active'), 1000);
 });
 
@@ -645,12 +722,10 @@ socket.on('gameRestarted', (data) => {
     gameState.winner = null;
     gameState.winningCells = [];
     moveCount = 0;
-    
     if (data.scores) {
         elements.playerScore.textContent = myColor === 'red' ? data.scores.red : data.scores.yellow;
         elements.opponentScore.textContent = myColor === 'red' ? data.scores.yellow : data.scores.red;
     }
-    
     updateBoard();
     updateTurnIndicator();
     elements.restartBtn.disabled = true;
@@ -662,72 +737,11 @@ socket.on('opponentLeft', () => {
     updateTurnIndicator();
 });
 
-socket.on('chatMessage', (data) => {
-    addChatMessage(data);
-});
-
-socket.on('error', (message) => {
-    showToast(message, 'error');
-});
+socket.on('chatMessage', (data) => addChatMessage(data));
+socket.on('error', (message) => showToast(message, 'error'));
 
 // ============ INITIALIZE ============
 createBoard();
 showScreen('menu');
 loadLanguage();
-elements.playerNameInput.focus();
-console.log('Connect Four initialized successfully');
-console.log('How to Play button:', elements.howToPlayBtn);
-// Add new elements
-const gameModeSelect = document.getElementById('gameModeSelect');
-const createSection = document.getElementById('createSection');
-const joinSection = document.getElementById('joinSection');
-const joinNameInput = document.getElementById('joinNameInput');
-const joinNameError = document.getElementById('joinNameError');
-const codeError = document.getElementById('codeError');
-
-// Dropdown change handler
-gameModeSelect.addEventListener('change', () => {
-    const selectedMode = gameModeSelect.value;
-    
-    // Hide both sections first
-    createSection.classList.add('hidden');
-    joinSection.classList.add('hidden');
-    
-    // Show selected section
-    if (selectedMode === 'create') {
-        createSection.classList.remove('hidden');
-        setTimeout(() => document.getElementById('playerNameInput').focus(), 100);
-    } else if (selectedMode === 'join') {
-        joinSection.classList.remove('hidden');
-        setTimeout(() => joinNameInput.focus(), 100);
-    }
-});
-
-// Create room - use playerNameInput from create section
-elements.createRoomBtn.addEventListener('click', () => {
-    playClickSound();
-    const name = elements.playerNameInput.value.trim();
-    if (name.length < 2) {
-        elements.nameError.textContent = translations[currentLanguage].nameRequired;
-        return;
-    }
-    myName = name;
-    socket.emit('createRoom', { playerName: myName });
-});
-
-// Join room - use joinNameInput from join section
-elements.joinRoomBtn.addEventListener('click', () => {
-    playClickSound();
-    const name = joinNameInput.value.trim();
-    if (name.length < 2) {
-        joinNameError.textContent = translations[currentLanguage].nameRequired;
-        return;
-    }
-    const code = elements.roomCodeInput.value.trim().toUpperCase();
-    if (code.length !== 6) {
-        codeError.textContent = translations[currentLanguage].enterValidCode;
-        return;
-    }
-    myName = name;
-    socket.emit('joinRoom', { roomCode: code, playerName: myName });
-});
+console.log('Connect Four initialized with dropdown selection');

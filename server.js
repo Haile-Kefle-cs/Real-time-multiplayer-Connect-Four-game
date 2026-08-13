@@ -6,14 +6,11 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 const PORT = process.env.PORT || 3000;
-const TURN_TIMER = 5000; // 5 seconds
+const TURN_TIMER = 10000; // 10 seconds
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (req, res) => {
@@ -132,13 +129,13 @@ function autoPlaceDisc(roomCode) {
             autoPlaced: true
         });
         
-        const systemMessage = {
+        const sysMsg = {
             sender: 'System',
             senderColor: 'system',
             message: `⏱️ ${playerName} ran out of time! Auto-placed and won!`,
             timestamp: new Date().toISOString()
         };
-        io.to(roomCode).emit('chatMessage', systemMessage);
+        io.to(roomCode).emit('chatMessage', sysMsg);
     } else if (isBoardFull(gameRoom.board)) {
         gameRoom.winner = 'draw';
         gameRoom.gameActive = false;
@@ -165,13 +162,13 @@ function autoPlaceDisc(roomCode) {
             autoPlaced: true
         });
         
-        const systemMessage = {
+        const sysMsg = {
             sender: 'System',
             senderColor: 'system',
-            message: `⏱️ ${playerName} ran out of time! Auto-placed disc in column ${randomCol + 1}.`,
+            message: `⏱️ ${playerName} ran out of time! Auto-placed in column ${randomCol + 1}.`,
             timestamp: new Date().toISOString()
         };
-        io.to(roomCode).emit('chatMessage', systemMessage);
+        io.to(roomCode).emit('chatMessage', sysMsg);
         
         startTurnTimer(roomCode);
     }
@@ -182,7 +179,6 @@ function startTurnTimer(roomCode) {
     if (!gameRoom) return;
     
     clearTurnTimer(roomCode);
-    
     gameRoom.turnDeadline = Date.now() + TURN_TIMER;
     
     io.to(roomCode).emit('timerStart', {
@@ -223,7 +219,6 @@ io.on('connection', (socket) => {
             socket.emit('roomCreated', { roomCode, color: 'red' });
             console.log(`Room ${roomCode} created by ${playerName}`);
         } catch (error) {
-            console.error('Error creating room:', error);
             socket.emit('error', 'Failed to create room');
         }
     });
@@ -234,14 +229,8 @@ io.on('connection', (socket) => {
             const normalizedCode = roomCode.toUpperCase().trim();
             const gameRoom = gameRooms.get(normalizedCode);
             
-            if (!gameRoom) {
-                socket.emit('error', 'Room not found');
-                return;
-            }
-            if (gameRoom.players.length >= 2) {
-                socket.emit('error', 'Room is full');
-                return;
-            }
+            if (!gameRoom) { socket.emit('error', 'Room not found'); return; }
+            if (gameRoom.players.length >= 2) { socket.emit('error', 'Room is full'); return; }
             
             socket.playerColor = 'yellow';
             socket.playerName = playerName || 'Player 2';
@@ -264,7 +253,6 @@ io.on('connection', (socket) => {
             startTurnTimer(normalizedCode);
             console.log(`${socket.playerName} joined room ${normalizedCode}`);
         } catch (error) {
-            console.error('Error joining room:', error);
             socket.emit('error', 'Failed to join room');
         }
     });
@@ -283,13 +271,9 @@ io.on('connection', (socket) => {
             if (column < 0 || column >= COLS) return;
             
             const row = findLowestEmptyRow(gameRoom.board, column);
-            if (row === -1) {
-                socket.emit('error', 'Column is full');
-                return;
-            }
+            if (row === -1) { socket.emit('error', 'Column is full'); return; }
             
             clearTurnTimer(roomCode);
-            
             gameRoom.board[row][column] = socket.playerColor;
             gameRoom.moveHistory.push({ row, column, player: socket.playerColor, autoPlaced: false });
             
@@ -301,12 +285,10 @@ io.on('connection', (socket) => {
                 gameRoom.gameActive = false;
                 gameRoom.scores[socket.playerColor]++;
                 
-                const winnerName = gameRoom.playerNames[socket.playerColor];
-                
                 io.to(roomCode).emit('gameOver', {
                     board: gameRoom.board,
                     winner: socket.playerColor,
-                    winnerName: winnerName,
+                    winnerName: gameRoom.playerNames[socket.playerColor],
                     winningCells: winningCells,
                     player: socket.playerColor,
                     scores: gameRoom.scores,
@@ -340,7 +322,6 @@ io.on('connection', (socket) => {
                 startTurnTimer(roomCode);
             }
         } catch (error) {
-            console.error('Error dropping piece:', error);
             socket.emit('error', 'Failed to drop piece');
         }
     });
@@ -366,9 +347,7 @@ io.on('connection', (socket) => {
             }
             
             io.to(roomCode).emit('chatMessage', chatMessage);
-        } catch (error) {
-            console.error('Error sending message:', error);
-        }
+        } catch (error) {}
     });
 
     socket.on('restartGame', (roomCode) => {
@@ -377,7 +356,6 @@ io.on('connection', (socket) => {
             if (!gameRoom) return;
             
             clearTurnTimer(roomCode);
-            
             gameRoom.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
             gameRoom.currentPlayer = 'red';
             gameRoom.gameActive = true;
@@ -392,9 +370,7 @@ io.on('connection', (socket) => {
             });
             
             startTurnTimer(roomCode);
-        } catch (error) {
-            console.error('Error restarting game:', error);
-        }
+        } catch (error) {}
     });
 
     socket.on('leaveRoom', (roomCode) => {
@@ -403,7 +379,6 @@ io.on('connection', (socket) => {
             if (!gameRoom) return;
             
             clearTurnTimer(roomCode);
-            
             const playerIndex = gameRoom.players.findIndex(p => p.id === socket.id);
             if (playerIndex !== -1) {
                 gameRoom.players.splice(playerIndex, 1);
@@ -416,14 +391,11 @@ io.on('connection', (socket) => {
                     io.to(roomCode).emit('opponentLeft');
                 }
             }
-        } catch (error) {
-            console.error('Error leaving room:', error);
-        }
+        } catch (error) {}
     });
 
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
-        
         gameRooms.forEach((room, roomCode) => {
             const playerIndex = room.players.findIndex(p => p.id === socket.id);
             if (playerIndex !== -1) {

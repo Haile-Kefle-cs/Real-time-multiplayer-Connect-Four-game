@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2E86DE">
+    <title>Connect Four - Multiplayer | ኮኔክት ፎር</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Language Toggle -->
+        <div class="language-toggle">
+            <button id="langEn" class="lang-btn active" onclick="setLanguage('en')">EN</button>
+            <button id="langAm" class="lang-btn" onclick="setLanguage('am')">አማ</button>
+        </div>
+        
+        <h1 class="game-title">
+            <span class="title-disc red">🔴</span>
+            <span data-en="Connect Four" data-am="ኮኔክት ፎር">Connect Four</span>
+            <span class="title-disc yellow">🟡</span>
+        </h1>
+        
+        <!-- Menu Screen -->
+        <div id="menu" class="screen active">
+            <div class="menu-content">
+                <h2 data-en="Start Playing" data-am="መጫወት ይጀምሩ">Start Playing</h2>
+                <p class="subtitle" data-en="Connect 4 discs to win!" data-am="ለማሸነፍ 4 ዲስኮችን ያገናኙ!">Connect 4 discs to win!</p>
+                
+                <div class="name-input-section">
+                    <label for="playerNameInput">
+                        <span class="label-icon">👤</span>
+                        <span data-en="Your Name:" data-am="ስምዎ:">Your Name:</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input type="text" id="playerNameInput" 
+                           data-en-placeholder="Enter your name" 
+                           data-am-placeholder="ስምዎን ያስገቡ"
+                           placeholder="Enter your name" maxlength="20"
+                           autocomplete="off">
+                    <small class="error-message" id="nameError"></small>
+                </div>
+                
+                <button id="createRoomBtn" class="btn btn-primary btn-large">
+                    <span class="btn-icon">➕</span>
+                    <span data-en="Create Game" data-am="ጨዋታ ይፍጠሩ">Create Game</span>
+                </button>
+                
+                <div class="divider"><span data-en="OR" data-am="ወይም">OR</span></div>
+                
+                <div class="join-section">
+                    <h3 data-en="🔑 Join Game" data-am="🔑 ጨዋታ ይቀላቀሉ">🔑 Join Game</h3>
+                    <p class="hint" data-en="Enter 6-character code" data-am="ባለ 6-ቁምፊ ኮድ ያስገቡ">Enter 6-character code</p>
+                    <div class="join-input-group">
+                        <input type="text" id="roomCodeInput" 
+                               placeholder="ABC123" maxlength="6"
+                               autocomplete="off">
+                        <button id="joinRoomBtn" class="btn btn-secondary">
+                            <span class="btn-icon">🚪</span>
+                            <span data-en="Join" data-am="ይቀላቀሉ">Join</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <button id="howToPlayBtn" class="btn btn-info">
+                    <span class="btn-icon">📖</span>
+                    <span data-en="How to Play" data-am="እንዴት መጫወት እንደሚቻል">How to Play</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- How to Play Modal -->
+        <div id="howToPlayModal" class="modal">
+            <div class="modal-content how-to-play-content">
+                <div class="modal-header">
+                    <h2 data-en="📖 How to Play" data-am="📖 እንዴት መጫወት እንደሚቻል">📖 How to Play</h2>
+                    <button id="closeHowToTopBtn" class="close-btn">✕</button>
+                </div>
+                
+                <div class="rules-scrollable">
+                    <div class="rules-content">
+                        <div class="rules-section">
+                            <h3 data-en="🎯 Game Goal" data-am="🎯 የጨዋታ ግብ">🎯 Game Goal</h3>
+                            <p data-en="Connect 4 discs in a row to win!" data-am="ለማሸነፍ 4 ዲስኮችን በአንድ ረድፍ ያገናኙ!">Connect <strong>4 discs</strong> in a row to win!</p>
+                            <div class="mini-board-demo">
+                                <span class="demo-disc red"></span>
+                                <span class="demo-disc red"></span>
+                                <span class="demo-disc red"></span>
+                                <span class="demo-disc red"></span>
+                            </div>
+                            <p class="win-text" data-en="= You Win! 🎉" data-am="= አሸንፈዋል! 🎉">= You Win! 🎉</p>
+                        </div>
+                        
+                        <hr class="rules-divider">
+                        
+                        <div class="rules-section">
+                            <h3 data-en="➕ How to Create a Game" data-am="➕ ጨዋታ እንዴት መፍጠር እንደሚቻል">➕ How to Create a Game</h3>
+                            <ol class="steps-list">
+                                <li data-en="Enter your name in the field" data-am="ስምዎን በመስኩ ውስጥ ያስገቡ">Enter your name in the field</li>
+                                <li data-en="Click Create Game button" data-am="ጨዋታ ይፍጠሩ የሚለውን ቁልፍ ይጫኑ">Click <strong>"Create Game"</strong> button</li>
+                                <li data-en="Get a 6-character room code" data-am="ባለ 6-ቁምፊ ክፍል ኮድ ያግኙ">Get a <strong>6-character room code</strong></li>
+                                <li data-en="Share the code with your friend" data-am="ኮዱን ለጓደኛዎ ያጋሩ">Share the code with your friend</li>
+                                <li data-en="Wait for them to join" data-am="እስኪቀላቀሉ ይጠብቁ">Wait for them to join</li>
+                                <li data-en="You play as Red and go first!" data-am="እርስዎ እንደ ቀይ ይጫወታሉ እና መጀመሪያ ይጀምራሉ!">You play as <span class="red-text">🔴 Red</span> and go first!</li>
+                            </ol>
+                            <div class="example-box">
+                                <p data-en="Example Room Code:" data-am="የክፍል ኮድ ምሳሌ:">Example Room Code:</p>
+                                <span class="example-code">ABC123</span>
+                            </div>
+                        </div>
+                        
+                        <hr class="rules-divider">
+                        
+                        <div class="rules-section">
+                            <h3 data-en="🚪 How to Join a Game" data-am="🚪 ጨዋታ እንዴት መቀላቀል እንደሚቻል">🚪 How to Join a Game</h3>
+                            <ol class="steps-list">
+                                <li data-en="Ask friend for room code" data-am="ከጓደኛዎ የክፍል ኮድ ይጠይቁ">Ask friend for <strong>room code</strong></li>
+                                <li data-en="Enter your name in the field" data-am="ስምዎን በመስኩ ውስጥ ያስገቡ">Enter your name in the field</li>
+                                <li data-en="Type the 6-character code" data-am="ባለ 6-ቁምፊ ኮዱን ይተይቡ">Type the 6-character code</li>
+                                <li data-en="Click Join button" data-am="ይቀላቀሉ የሚለውን ቁልፍ ይጫኑ">Click <strong>"Join"</strong> button</li>
+                                <li data-en="Game starts automatically!" data-am="ጨዋታው በራስ-ሰር ይጀምራል!">Game starts automatically!</li>
+                                <li data-en="You play as Yellow and go second!" data-am="እርስዎ እንደ ቢጫ ይጫወታሉ እና ሁለተኛ ይጫወታሉ!">You play as <span class="yellow-text">🟡 Yellow</span> and go second!</li>
+                            </ol>
+                            <div class="example-box">
+                                <p data-en="Enter Code Like This:" data-am="ኮድ እንደዚህ ያስገቡ:">Enter Code Like This:</p>
+                                <span class="example-code">ABC123</span>
+                            </div>
+                        </div>
+                        
+                        <hr class="rules-divider">
+                        
+                        <div class="rules-section">
+                            <h3 data-en="🎮 How to Play" data-am="🎮 እንዴት መጫወት እንደሚቻል">🎮 How to Play</h3>
+                            <ol class="steps-list">
+                                <li data-en="Click on any column to drop disc" data-am="ዲስክን ለመጣል በማንኛውም አምድ ላይ ይጫኑ">Click on any column to drop disc</li>
+                                <li data-en="Disc falls to lowest empty space" data-am="ዲስክ ወደ ዝቅተኛው ባዶ ቦታ ይወርዳል">Disc falls to <strong>lowest empty space</strong></li>
+                                <li data-en="Players take turns dropping discs" data-am="ተጫዋቾች በተራ ዲስኮችን ይጥላሉ">Players take turns dropping discs</li>
+                                <li data-en="First to connect 4 discs wins!" data-am="መጀመሪያ 4 ዲስኮችን የሚያገናኝ ያሸንፋል!">First to connect <strong>4 discs</strong> wins!</li>
+                            </ol>
+                        </div>
+                        
+                        <hr class="rules-divider">
+                        
+                        <div class="rules-section">
+                            <h3 data-en="🏆 Winning Combinations" data-am="🏆 የማሸነፍ መንገዶች">🏆 Winning Combinations</h3>
+                            <p data-en="Win in any direction:" data-am="በማንኛውም አቅጣጫ ያሸንፉ:">Win in any direction:</p>
+                            <div class="win-directions">
+                                <div class="direction-row">
+                                    <span class="direction-label" data-en="Horizontal:" data-am="አግድም:">Horizontal:</span>
+                                    <span class="direction-demo">🔴🔴🔴🔴</span>
+                                </div>
+                                <div class="direction-row">
+                                    <span class="direction-label" data-en="Vertical:" data-am="ቁመት:">Vertical:</span>
+                                    <span class="direction-demo vertical-demo">🔴<br>🔴<br>🔴<br>🔴</span>
+                                </div>
+                                <div class="direction-row">
+                                    <span class="direction-label" data-en="Diagonal:" data-am="ሰያፍ:">Diagonal:</span>
+                                    <span class="direction-demo diagonal-demo">🔴<br>&nbsp;🔴<br>&nbsp;&nbsp;🔴<br>&nbsp;&nbsp;&nbsp;🔴</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr class="rules-divider">
+                        
+                        <div class="rules-section">
+                            <h3 data-en="💡 Quick Tips" data-am="💡 ፈጣን ምክሮች">💡 Quick Tips</h3>
+                            <ul class="tips-list">
+                                <li data-en="Control the center column" data-am="የመሃል አምዱን ይቆጣጠሩ">🎯 Control the center column</li>
+                                <li data-en="Block opponent's 3-in-a-row" data-am="የተቃዋሚዎን 3-በ-ረድፍ ያግዱ">🚫 Block opponent's 3-in-a-row</li>
+                                <li data-en="Watch for diagonal threats" data-am="ሰያፍ ስጋቶችን ይከታተሉ">👀 Watch for diagonal threats</li>
+                                <li data-en="Think 2-3 moves ahead" data-am="ከ2-3 እንቅስቃሴ በፊት ያስቡ">🧠 Think 2-3 moves ahead</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button id="closeHowToBtn" class="btn btn-primary btn-close-how">
+                        <span data-en="Got it! Let's Play!" data-am="ገባኝ! እንጫወት!">Got it! Let's Play!</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Waiting Screen -->
+        <div id="waiting" class="screen">
+            <h2 data-en="⏳ Waiting for Opponent" data-am="⏳ ተቃዋሚን በመጠበቅ ላይ">⏳ Waiting for Opponent</h2>
+            <p data-en="Share this code:" data-am="ይህን ኮድ ያጋሩ:">Share this code:</p>
+            <div class="room-code-box">
+                <span id="roomCodeDisplay">------</span>
+                <button id="copyCodeBtn">
+                    <span data-en="📋 Copy" data-am="📋 ቅዳ">📋 Copy</span>
+                </button>
+            </div>
+            <div class="loader"></div>
+            <p class="waiting-text" data-en="Waiting for player 2..." data-am="ተጫዋች 2ን በመጠበቅ ላይ...">Waiting for player 2...</p>
+            <button id="cancelWaitBtn" class="btn btn-danger">
+                <span data-en="Cancel" data-am="ይቅር">Cancel</span>
+            </button>
+        </div>
+        
+        <!-- Game Screen -->
+        <div id="game" class="screen">
+            <div class="game-header">
+                <!-- Player 1 Profile -->
+                <div class="player-profile" id="playerProfile">
+                    <div class="profile-avatar red-avatar">
+                        <span class="avatar-letter" id="playerAvatarLetter">P</span>
+                    </div>
+                    <div class="profile-info">
+                        <span class="profile-label" data-en="You" data-am="እርስዎ">You</span>
+                        <span id="playerName" class="profile-name">Player 1</span>
+                        <span id="playerScore" class="score-badge">0</span>
+                    </div>
+                    <span class="player-dot red"></span>
+                </div>
+                
+                <div class="turn-indicator" id="turnIndicator">
+                    <span id="turnDot" class="turn-dot red"></span>
+                    <span id="turnText" data-en="Your turn" data-am="የእርስዎ ተራ">Your turn</span>
+                </div>
+                
+                <!-- Player 2 Profile -->
+                <div class="player-profile" id="opponentProfile">
+                    <span class="player-dot yellow"></span>
+                    <div class="profile-info">
+                        <span class="profile-label" data-en="Opponent" data-am="ተቃዋሚ">Opponent</span>
+                        <span id="opponentName" class="profile-name">Player 2</span>
+                        <span id="opponentScore" class="score-badge">0</span>
+                    </div>
+                    <div class="profile-avatar yellow-avatar">
+                        <span class="avatar-letter" id="opponentAvatarLetter">O</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Column Click Indicators -->
+            <div class="column-indicators" id="columnIndicators">
+                <!-- Generated by JavaScript -->
+            </div>
+            
+            <div class="board-container">
+                <div class="board" id="board">
+                    <!-- Generated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="move-info">
+                <span id="moveCount" data-en="Moves: 0" data-am="እንቅስቃሴዎች: 0">Moves: 0</span>
+                <span id="lastMove" data-en="Last: -" data-am="የመጨረሻ: -">Last: -</span>
+            </div>
+            
+            <div id="gameMessage" class="game-message"></div>
+            
+            <div class="game-actions">
+                <button id="restartBtn" class="btn btn-secondary" disabled>
+                    <span data-en="🔄 Play Again" data-am="🔄 እንደገና ይጫወቱ">🔄 Play Again</span>
+                </button>
+                <button id="leaveBtn" class="btn btn-danger">
+                    <span data-en="🚪 Leave" data-am="🚪 ይውጡ">🚪 Leave</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Game Over Modal -->
+        <div id="gameOverModal" class="modal">
+            <div class="modal-content">
+                <div id="confettiContainer"></div>
+                <div id="gameOverEmoji">🏆</div>
+                <h2 id="gameOverTitle">Winner!</h2>
+                <div id="winnerAvatar" class="winner-avatar red">
+                    <span id="winnerAvatarLetter">W</span>
+                </div>
+                <div id="winnerName" class="winner-name"></div>
+                <p id="gameOverMessage"></p>
+                <div class="modal-buttons">
+                    <button id="playAgainBtn" class="btn btn-primary">
+                        <span data-en="🔄 Play Again" data-am="🔄 እንደገና ይጫወቱ">🔄 Play Again</span>
+                    </button>
+                    <button id="backToMenuBtn" class="btn btn-secondary">
+                        <span data-en="🏠 Menu" data-am="🏠 ምናሌ">🏠 Menu</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="toast" class="toast"></div>
+        <div id="connectionStatus" class="connection-status">Connecting...</div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

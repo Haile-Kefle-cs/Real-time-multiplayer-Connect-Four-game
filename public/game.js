@@ -53,7 +53,9 @@ const elements = {
     chatInput: document.getElementById('chatInput'),
     sendMessageBtn: document.getElementById('sendMessageBtn'),
     toggleChatBtn: document.getElementById('toggleChatBtn'),
-    chatBadge: document.getElementById('chatBadge')
+    chatBadge: document.getElementById('chatBadge'),
+    timerDisplay: document.getElementById('timerDisplay'),
+    timerBar: document.getElementById('timerBar')
 };
 
 // Game State
@@ -64,6 +66,8 @@ let myName = '';
 let opponentNameStr = '';
 let moveCount = 0;
 let unreadMessages = 0;
+let timerInterval = null;
+let timeRemaining = 5;
 
 let gameState = {
     board: Array(6).fill(null).map(() => Array(7).fill(null)),
@@ -101,10 +105,11 @@ const translations = {
         disconnected: 'Disconnected',
         moves: 'Moves:',
         last: 'Last:',
-        column: 'Column',
+        column: 'Col',
         leave: 'Leave',
         cancel: 'Cancel',
-        winner: 'Winner!'
+        winner: 'Winner!',
+        autoPlaced: '⏱️ Auto-placed!'
     },
     am: {
         yourTurn: '✅ የእርስዎ ተራ',
@@ -135,11 +140,12 @@ const translations = {
         column: 'አምድ',
         leave: 'ይውጡ',
         cancel: 'ይቅር',
-        winner: 'አሸናፊ!'
+        winner: 'አሸናፊ!',
+        autoPlaced: '⏱️ በራስ-ሰር ተቀምጧል!'
     }
 };
 
-// Language
+// Language Functions
 window.setLanguage = function(lang) {
     currentLanguage = lang;
     document.getElementById('langEn').classList.toggle('active', lang === 'en');
@@ -151,7 +157,6 @@ window.setLanguage = function(lang) {
     localStorage.setItem('connectFourLanguage', lang);
 };
 
-// Load saved language
 function loadLanguage() {
     const saved = localStorage.getItem('connectFourLanguage');
     if (saved) setLanguage(saved);
@@ -164,12 +169,14 @@ function playSound(freq, duration, type = 'sine') {
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
-        osc.connect(gain); gain.connect(audioContext.destination);
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
         osc.frequency.value = freq;
         osc.type = type;
         gain.gain.setValueAtTime(0.2, audioContext.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-        osc.start(); osc.stop(audioContext.currentTime + duration);
+        osc.start();
+        osc.stop(audioContext.currentTime + duration);
     } catch(e) {}
 }
 
@@ -180,6 +187,49 @@ function playWinSound() {
     [523, 659, 784, 1047].forEach((freq, i) => {
         setTimeout(() => playSound(freq, 0.3), i * 150);
     });
+}
+
+// Timer Functions
+function startTimer(duration) {
+    clearTimer();
+    timeRemaining = duration / 1000;
+    updateTimerDisplay();
+    
+    timerInterval = setInterval(() => {
+        timeRemaining -= 0.1;
+        updateTimerDisplay();
+        if (timeRemaining <= 0) {
+            clearTimer();
+        }
+    }, 100);
+}
+
+function clearTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function updateTimerDisplay() {
+    if (elements.timerDisplay) {
+        elements.timerDisplay.textContent = Math.ceil(timeRemaining) + 's';
+    }
+    if (elements.timerBar) {
+        const percentage = (timeRemaining / 5) * 100;
+        elements.timerBar.style.width = percentage + '%';
+        
+        if (percentage > 50) {
+            elements.timerBar.style.background = '#4CAF50';
+            elements.timerDisplay.classList.remove('timer-warning');
+        } else if (percentage > 25) {
+            elements.timerBar.style.background = '#FFA726';
+            elements.timerDisplay.classList.remove('timer-warning');
+        } else {
+            elements.timerBar.style.background = '#FF4757';
+            elements.timerDisplay.classList.add('timer-warning');
+        }
+    }
 }
 
 // Board Functions
@@ -247,7 +297,6 @@ function updateBoard() {
 function updateTurnIndicator() {
     const t = translations[currentLanguage];
     
-    // Remove all classes first
     elements.turnIndicator.className = 'turn-indicator';
     elements.playerProfile.classList.remove('active-turn');
     elements.opponentProfile.classList.remove('active-turn');
@@ -256,17 +305,16 @@ function updateTurnIndicator() {
         elements.turnIndicator.classList.add('game-over-state');
         elements.turnText.textContent = t.gameOver;
         elements.turnDot.className = 'turn-dot';
+        clearTimer();
         return;
     }
     
     if (gameState.currentPlayer === myColor) {
-        // Your turn - GREEN BLINK
         elements.turnIndicator.classList.add('your-turn-blink');
         elements.turnText.textContent = t.yourTurn;
         elements.turnDot.className = 'turn-dot green-dot';
         elements.playerProfile.classList.add('active-turn');
     } else {
-        // Opponent's turn - RED BLINK
         elements.turnIndicator.classList.add('opponent-turn-blink');
         elements.turnText.textContent = opponentNameStr + t.opponentTurn;
         elements.turnDot.className = 'turn-dot red-dot';
@@ -323,7 +371,7 @@ function clearChat() {
     elements.chatBadge.style.display = 'none';
 }
 
-// Toast
+// Toast Notification
 function showToast(message, type = 'error') {
     elements.toast.textContent = message;
     elements.toast.className = 'toast';
@@ -338,7 +386,7 @@ function showToast(message, type = 'error') {
     }, 3000);
 }
 
-// Validate Name
+// Name Validation
 function validateName() {
     const t = translations[currentLanguage];
     const name = elements.playerNameInput.value.trim();
@@ -383,12 +431,6 @@ function validateName() {
     return true;
 }
 
-// Show Screen
-function showScreen(name) {
-    Object.keys(screens).forEach(k => screens[k].classList.remove('active'));
-    screens[name].classList.add('active');
-}
-
 // Confetti
 function createConfetti() {
     elements.confettiContainer.innerHTML = '';
@@ -402,6 +444,12 @@ function createConfetti() {
         confetti.style.animationDuration = (Math.random() * 1 + 1) + 's';
         elements.confettiContainer.appendChild(confetti);
     }
+}
+
+// Show Screen
+function showScreen(name) {
+    Object.keys(screens).forEach(k => screens[k].classList.remove('active'));
+    screens[name].classList.add('active');
 }
 
 // Event Listeners
@@ -428,7 +476,6 @@ elements.joinRoomBtn.addEventListener('click', () => {
     socket.emit('joinRoom', { roomCode: code, playerName: myName });
 });
 
-// Real-time input validation
 elements.playerNameInput.addEventListener('input', () => {
     if (elements.playerNameInput.value.trim().length > 0) {
         elements.nameError.textContent = '';
@@ -450,6 +497,7 @@ elements.roomCodeInput.addEventListener('input', (e) => {
 
 elements.sendMessageBtn.addEventListener('click', sendChatMessage);
 elements.chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+
 elements.toggleChatBtn.addEventListener('click', () => {
     elements.chatBody.classList.toggle('collapsed');
     elements.toggleChatBtn.classList.toggle('collapsed');
@@ -491,6 +539,14 @@ elements.backToMenuBtn.addEventListener('click', () => {
 elements.howToPlayBtn.addEventListener('click', () => elements.howToPlayModal.classList.add('active'));
 elements.closeHowToBtn.addEventListener('click', () => elements.howToPlayModal.classList.remove('active'));
 if (elements.closeHowToTopBtn) elements.closeHowToTopBtn.addEventListener('click', () => elements.howToPlayModal.classList.remove('active'));
+
+// Close modals on outside click
+elements.howToPlayModal.addEventListener('click', (e) => {
+    if (e.target === elements.howToPlayModal) elements.howToPlayModal.classList.remove('active');
+});
+elements.gameOverModal.addEventListener('click', (e) => {
+    if (e.target === elements.gameOverModal) elements.gameOverModal.classList.remove('active');
+});
 
 // Socket Events
 socket.on('connect', () => {
@@ -538,6 +594,10 @@ socket.on('gameStart', (data) => {
     showScreen('game');
 });
 
+socket.on('timerStart', (data) => {
+    startTimer(data.duration);
+});
+
 socket.on('pieceDropped', (data) => {
     playDropSound();
     gameState.board = data.board;
@@ -547,6 +607,10 @@ socket.on('pieceDropped', (data) => {
     updateTurnIndicator();
     elements.moveCount.textContent = translations[currentLanguage].moves + ' ' + moveCount;
     elements.lastMove.textContent = translations[currentLanguage].last + ' ' + translations[currentLanguage].column + ' ' + (data.column + 1);
+    
+    if (data.autoPlaced) {
+        showToast(translations[currentLanguage].autoPlaced, 'error');
+    }
 });
 
 socket.on('gameOver', (data) => {
@@ -579,7 +643,7 @@ socket.on('gameOver', (data) => {
             createConfetti();
         } else {
             elements.gameOverEmoji.textContent = '😔';
-            elements.gameOverTitle.textContent = translations[currentLanguage].youLose;
+            elements.gameOverTitle.textContent = data.winnerName + ' ' + translations[currentLanguage].youLose;
             elements.winnerName.textContent = data.winnerName;
             elements.gameOverMessage.textContent = data.winnerName + ' ' + translations[currentLanguage].youLose;
         }
@@ -616,4 +680,4 @@ createBoard();
 showScreen('menu');
 loadLanguage();
 elements.playerNameInput.focus();
-console.log('Connect Four initialized successfully');
+console.log('Connect Four initialized with timer, chat, and validation');

@@ -1,3 +1,6 @@
+
+
+
 * {
     margin: 0;
     padding: 0;
@@ -1348,4 +1351,41 @@ body {
 @media (min-width: 769px) {
     :root { --board-max-width: 320px; }
     .container { max-width: 450px; min-height: auto; padding: 25px; }
+}
+/* Add these at the end of your style.css */
+body {
+    align-items: flex-start !important;
+    padding-top: 5px !important;
+}
+
+.container {
+    padding-top: 10px !important;
+}
+
+.game-title {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+    font-size: 1.3em !important;
+}
+
+.menu-content {
+    justify-content: flex-start !important;
+    padding-top: 0 !important;
+}
+
+.screen {
+    padding: 0 !important;
+}
+
+.mode-selector {
+    margin: 5px 0 !important;
+}
+
+.btn {
+    padding: 10px 18px !important;
+    margin: 2px !important;
+}
+
+.footer {
+    padding: 8px 10px 3px !important;
 }

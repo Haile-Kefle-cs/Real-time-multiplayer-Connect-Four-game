@@ -10,7 +10,7 @@ const io = socketIO(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const TURN_TIMER = 10000; // 10 seconds
+const TURN_TIMER = 10000;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (req, res) => {
@@ -44,6 +44,7 @@ function createGameRoom() {
         winningCells: [],
         moveHistory: [],
         scores: { red: 0, yellow: 0 },
+        roundsPlayed: 0,
         chatMessages: [],
         turnTimer: null,
         turnDeadline: null,
@@ -93,6 +94,28 @@ function getAvailableColumns(board) {
     return columns;
 }
 
+// Send personalized game over to each player
+function emitGameOver(roomCode, gameRoom, winner, winnerName, winningCells, autoPlaced) {
+    gameRoom.players.forEach(player => {
+        const playerSocket = io.sockets.sockets.get(player.id);
+        if (playerSocket) {
+            playerSocket.emit('gameOver', {
+                board: gameRoom.board,
+                winner: winner,
+                winnerName: winnerName,
+                winningCells: winningCells,
+                player: winner,
+                scores: gameRoom.scores,
+                yourScore: player.color === 'red' ? gameRoom.scores.red : gameRoom.scores.yellow,
+                opponentScore: player.color === 'red' ? gameRoom.scores.yellow : gameRoom.scores.red,
+                isWinner: winner === 'draw' ? false : player.color === winner,
+                roundsPlayed: gameRoom.roundsPlayed,
+                autoPlaced: autoPlaced
+            });
+        }
+    });
+}
+
 function autoPlaceDisc(roomCode) {
     const gameRoom = gameRooms.get(roomCode);
     if (!gameRoom || !gameRoom.gameActive || gameRoom.winner) return;
@@ -117,39 +140,25 @@ function autoPlaceDisc(roomCode) {
         gameRoom.winningCells = winningCells;
         gameRoom.gameActive = false;
         gameRoom.scores[currentPlayerColor]++;
+        gameRoom.roundsPlayed++;
         clearTurnTimer(roomCode);
         
-        io.to(roomCode).emit('gameOver', {
-            board: gameRoom.board,
-            winner: currentPlayerColor,
-            winnerName: playerName,
-            winningCells: winningCells,
-            player: currentPlayerColor,
-            scores: gameRoom.scores,
-            autoPlaced: true
-        });
+        emitGameOver(roomCode, gameRoom, currentPlayerColor, playerName, winningCells, true);
         
         const sysMsg = {
             sender: 'System',
             senderColor: 'system',
-            message: `⏱️ ${playerName} ran out of time! Auto-placed and won!`,
+            message: `⏱️ ${playerName} ran out of time! Auto-placed and won! Score: Red ${gameRoom.scores.red} - Yellow ${gameRoom.scores.yellow}`,
             timestamp: new Date().toISOString()
         };
         io.to(roomCode).emit('chatMessage', sysMsg);
     } else if (isBoardFull(gameRoom.board)) {
         gameRoom.winner = 'draw';
         gameRoom.gameActive = false;
+        gameRoom.roundsPlayed++;
         clearTurnTimer(roomCode);
         
-        io.to(roomCode).emit('gameOver', {
-            board: gameRoom.board,
-            winner: 'draw',
-            winnerName: 'Draw',
-            winningCells: [],
-            player: null,
-            scores: gameRoom.scores,
-            autoPlaced: true
-        });
+        emitGameOver(roomCode, gameRoom, 'draw', 'Draw', [], true);
     } else {
         gameRoom.currentPlayer = gameRoom.currentPlayer === 'red' ? 'yellow' : 'red';
         
@@ -211,6 +220,7 @@ io.on('connection', (socket) => {
             
             socket.playerColor = 'red';
             socket.playerName = playerName;
+            socket.roomCode = roomCode;
             gameRoom.players.push({ id: socket.id, color: 'red', name: playerName });
             gameRoom.playerNames.red = playerName;
             gameRooms.set(roomCode, gameRoom);
@@ -234,6 +244,7 @@ io.on('connection', (socket) => {
             
             socket.playerColor = 'yellow';
             socket.playerName = playerName || 'Player 2';
+            socket.roomCode = normalizedCode;
             gameRoom.players.push({ id: socket.id, color: 'yellow', name: socket.playerName });
             gameRoom.playerNames.yellow = socket.playerName;
             gameRoom.gameActive = true;
@@ -241,13 +252,22 @@ io.on('connection', (socket) => {
             socket.join(normalizedCode);
             socket.emit('roomJoined', { roomCode: normalizedCode, color: 'yellow' });
             
-            io.to(normalizedCode).emit('gameStart', {
-                board: gameRoom.board,
-                currentPlayer: gameRoom.currentPlayer,
-                playerNames: gameRoom.playerNames,
-                players: gameRoom.players.map(p => ({ color: p.color, name: p.name })),
-                scores: gameRoom.scores,
-                chatMessages: gameRoom.chatMessages
+            // Send personalized game start
+            gameRoom.players.forEach(player => {
+                const playerSocket = io.sockets.sockets.get(player.id);
+                if (playerSocket) {
+                    playerSocket.emit('gameStart', {
+                        board: gameRoom.board,
+                        currentPlayer: gameRoom.currentPlayer,
+                        playerNames: gameRoom.playerNames,
+                        players: gameRoom.players.map(p => ({ color: p.color, name: p.name })),
+                        scores: gameRoom.scores,
+                        yourScore: player.color === 'red' ? gameRoom.scores.red : gameRoom.scores.yellow,
+                        opponentScore: player.color === 'red' ? gameRoom.scores.yellow : gameRoom.scores.red,
+                        roundsPlayed: gameRoom.roundsPlayed,
+                        chatMessages: gameRoom.chatMessages
+                    });
+                }
             });
             
             startTurnTimer(normalizedCode);
@@ -284,29 +304,23 @@ io.on('connection', (socket) => {
                 gameRoom.winningCells = winningCells;
                 gameRoom.gameActive = false;
                 gameRoom.scores[socket.playerColor]++;
+                gameRoom.roundsPlayed++;
                 
-                io.to(roomCode).emit('gameOver', {
-                    board: gameRoom.board,
-                    winner: socket.playerColor,
-                    winnerName: gameRoom.playerNames[socket.playerColor],
-                    winningCells: winningCells,
-                    player: socket.playerColor,
-                    scores: gameRoom.scores,
-                    autoPlaced: false
-                });
+                emitGameOver(roomCode, gameRoom, socket.playerColor, gameRoom.playerNames[socket.playerColor], winningCells, false);
+                
+                const sysMsg = {
+                    sender: 'System',
+                    senderColor: 'system',
+                    message: `🏆 ${gameRoom.playerNames[socket.playerColor]} wins! Score: Red ${gameRoom.scores.red} - Yellow ${gameRoom.scores.yellow}`,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(roomCode).emit('chatMessage', sysMsg);
             } else if (isBoardFull(gameRoom.board)) {
                 gameRoom.winner = 'draw';
                 gameRoom.gameActive = false;
+                gameRoom.roundsPlayed++;
                 
-                io.to(roomCode).emit('gameOver', {
-                    board: gameRoom.board,
-                    winner: 'draw',
-                    winnerName: 'Draw',
-                    winningCells: [],
-                    player: null,
-                    scores: gameRoom.scores,
-                    autoPlaced: false
-                });
+                emitGameOver(roomCode, gameRoom, 'draw', 'Draw', [], false);
             } else {
                 gameRoom.currentPlayer = gameRoom.currentPlayer === 'red' ? 'yellow' : 'red';
                 
@@ -366,7 +380,8 @@ io.on('connection', (socket) => {
             io.to(roomCode).emit('gameRestarted', {
                 board: gameRoom.board,
                 currentPlayer: gameRoom.currentPlayer,
-                scores: gameRoom.scores
+                scores: gameRoom.scores,
+                roundsPlayed: gameRoom.roundsPlayed
             });
             
             startTurnTimer(roomCode);

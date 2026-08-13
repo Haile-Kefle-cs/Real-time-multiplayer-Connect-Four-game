@@ -1,3 +1,97 @@
+/* Turn Indicator Blinking */
+.turn-indicator {
+    transition: all 0.3s;
+}
+
+/* Your Turn - GREEN BLINK */
+.turn-indicator.your-turn-blink {
+    background: linear-gradient(135deg, #4CAF50, #45a049) !important;
+    color: white !important;
+    animation: greenBlink 1s infinite;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+}
+
+@keyframes greenBlink {
+    0%, 100% { 
+        opacity: 1;
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.7;
+        box-shadow: 0 0 30px rgba(76, 175, 80, 0.8);
+        transform: scale(1.05);
+    }
+}
+
+/* Opponent's Turn - RED BLINK */
+.turn-indicator.opponent-turn-blink {
+    background: linear-gradient(135deg, #FF4757, #E63946) !important;
+    color: white !important;
+    animation: redBlink 1s infinite;
+    box-shadow: 0 0 20px rgba(255, 71, 87, 0.5);
+}
+
+@keyframes redBlink {
+    0%, 100% { 
+        opacity: 1;
+        box-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.7;
+        box-shadow: 0 0 30px rgba(255, 71, 87, 0.8);
+        transform: scale(1.05);
+    }
+}
+
+/* Game Over State */
+.turn-indicator.game-over-state {
+    background: #95a5a6 !important;
+    color: white !important;
+    animation: none;
+}
+
+/* Turn Dots */
+.turn-dot.green-dot {
+    background: #4CAF50 !important;
+    box-shadow: 0 0 10px #4CAF50;
+    animation: dotBlink 1s infinite;
+}
+
+.turn-dot.red-dot {
+    background: #FF4757 !important;
+    box-shadow: 0 0 10px #FF4757;
+    animation: dotBlink 1s infinite;
+}
+
+@keyframes dotBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Active Player Profile */
+.player-profile.active-turn {
+    animation: profileGlow 1.5s infinite;
+}
+
+@keyframes profileGlow {
+    0%, 100% { 
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        border-color: #4CAF50;
+    }
+    50% { 
+        box-shadow: 0 0 25px rgba(76, 175, 80, 0.6);
+        border-color: #4CAF50;
+    }
+}
+
+/* Board Shake */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
 * {
     margin: 0;
     padding: 0;

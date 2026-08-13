@@ -1,3 +1,22 @@
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 15px 10px 5px;
+    margin-top: auto;
+    border-top: 1px solid #e0e0e0;
+}
+
+.footer p {
+    color: #999;
+    font-size: 0.8em;
+    margin: 0;
+}
+
+.footer strong {
+    color: var(--primary);
+    font-weight: 700;
+}
+
 * {
     margin: 0;
     padding: 0;

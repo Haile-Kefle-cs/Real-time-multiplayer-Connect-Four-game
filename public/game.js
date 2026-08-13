@@ -1,5 +1,6 @@
 const socket = io();
 
+// DOM Elements
 const screens = {
     menu: document.getElementById('menu'),
     waiting: document.getElementById('waiting'),
@@ -53,6 +54,7 @@ const elements = {
     timerBar: document.getElementById('timerBar')
 };
 
+// Game State
 let currentLanguage = 'en';
 let currentRoom = null;
 let myColor = null;
@@ -70,33 +72,65 @@ let gameState = {
     winningCells: []
 };
 
+// Translations
 const translations = {
     en: {
-        yourTurn: 'YOUR TURN', opponentTurn: "'s turn...", gameOver: 'Game Over',
-        notYourTurn: "Not your turn!", columnFull: 'Column full!',
-        gameNotActive: 'Game not active', enterValidCode: 'Enter valid code',
-        nameRequired: 'Name is required!', nameTooShort: 'Min 2 characters!',
-        enterName: 'Enter your name!', gameStarted: 'Game started!',
-        youWin: 'You won!', youLose: 'wins!', draw: 'Draw!',
-        opponentLeft: 'Opponent left!', gameRestarted: 'Game restarted!',
-        codeCopied: 'Code copied!', connected: 'Connected', disconnected: 'Disconnected',
-        moves: 'Moves:', last: 'Last:', column: 'Col', leave: 'Leave',
-        winner: 'Winner!', autoPlaced: 'Auto-placed!'
+        yourTurn: 'YOUR TURN',
+        opponentTurn: "'s turn...",
+        gameOver: 'Game Over',
+        notYourTurn: "Not your turn!",
+        columnFull: 'Column full!',
+        gameNotActive: 'Game not active',
+        enterValidCode: 'Enter valid code',
+        nameRequired: 'Name is required!',
+        nameTooShort: 'Min 2 characters!',
+        enterName: 'Enter your name!',
+        gameStarted: 'Game started!',
+        youWin: 'You won!',
+        youLose: 'wins!',
+        draw: 'Draw!',
+        opponentLeft: 'Opponent left!',
+        gameRestarted: 'Game restarted!',
+        codeCopied: 'Code copied!',
+        connected: 'Connected',
+        disconnected: 'Disconnected',
+        moves: 'Moves:',
+        last: 'Last:',
+        column: 'Col',
+        leave: 'Leave',
+        winner: 'Winner!',
+        autoPlaced: 'Auto-placed!'
     },
     am: {
-        yourTurn: 'የእርስዎ ተራ', opponentTurn: ' ተራ...', gameOver: 'ጨዋታ አብቅቷል',
-        notYourTurn: 'የእርስዎ ተራ አይደለም!', columnFull: 'አምዱ ሞልቷል!',
-        gameNotActive: 'ጨዋታ ንቁ አይደለም', enterValidCode: 'ትክክለኛ ኮድ ያስገቡ',
-        nameRequired: 'ስም ያስፈልጋል!', nameTooShort: 'ቢያንስ 2 ቁምፊዎች!',
-        enterName: 'ስምዎን ያስገቡ!', gameStarted: 'ጨዋታ ተጀምሯል!',
-        youWin: 'አሸንፈዋል!', youLose: 'አሸንፏል!', draw: 'አቻ!',
-        opponentLeft: 'ተቃዋሚ ወጥቷል!', gameRestarted: 'እንደገና ተጀምሯል!',
-        codeCopied: 'ኮድ ተቀድቷል!', connected: 'ተገናኝቷል', disconnected: 'ተቋርጧል',
-        moves: 'እንቅስቃሴ:', last: 'የመጨረሻ:', column: 'አምድ', leave: 'ይውጡ',
-        winner: 'አሸናፊ!', autoPlaced: 'በራስ-ሰር ተቀምጧል!'
+        yourTurn: 'የእርስዎ ተራ',
+        opponentTurn: ' ተራ...',
+        gameOver: 'ጨዋታ አብቅቷል',
+        notYourTurn: 'የእርስዎ ተራ አይደለም!',
+        columnFull: 'አምዱ ሞልቷል!',
+        gameNotActive: 'ጨዋታ ንቁ አይደለም',
+        enterValidCode: 'ትክክለኛ ኮድ ያስገቡ',
+        nameRequired: 'ስም ያስፈልጋል!',
+        nameTooShort: 'ቢያንስ 2 ቁምፊዎች!',
+        enterName: 'ስምዎን ያስገቡ!',
+        gameStarted: 'ጨዋታ ተጀምሯል!',
+        youWin: 'አሸንፈዋል!',
+        youLose: 'አሸንፏል!',
+        draw: 'አቻ!',
+        opponentLeft: 'ተቃዋሚ ወጥቷል!',
+        gameRestarted: 'እንደገና ተጀምሯል!',
+        codeCopied: 'ኮድ ተቀድቷል!',
+        connected: 'ተገናኝቷል',
+        disconnected: 'ተቋርጧል',
+        moves: 'እንቅስቃሴ:',
+        last: 'የመጨረሻ:',
+        column: 'አምድ',
+        leave: 'ይውጡ',
+        winner: 'አሸናፊ!',
+        autoPlaced: 'በራስ-ሰር ተቀምጧል!'
     }
 };
 
+// Language
 window.setLanguage = function(lang) {
     currentLanguage = lang;
     document.getElementById('langEn').classList.toggle('active', lang === 'en');
@@ -105,25 +139,42 @@ window.setLanguage = function(lang) {
         el.textContent = el.getAttribute(`data-${lang}`);
     });
     updateTurnIndicator();
+    localStorage.setItem('connectFourLanguage', lang);
 };
 
+function loadLanguage() {
+    const saved = localStorage.getItem('connectFourLanguage');
+    if (saved) setLanguage(saved);
+}
+
+// Audio
 let audioContext;
 function playSound(freq, duration, type = 'sine') {
     try {
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
-        osc.connect(gain); gain.connect(audioContext.destination);
-        osc.frequency.value = freq; osc.type = type;
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = freq;
+        osc.type = type;
         gain.gain.setValueAtTime(0.2, audioContext.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-        osc.start(); osc.stop(audioContext.currentTime + duration);
+        osc.start();
+        osc.stop(audioContext.currentTime + duration);
     } catch(e) {}
 }
+
 function playDropSound() { playSound(300, 0.1); }
 function playClickSound() { playSound(800, 0.05); }
 function playErrorSound() { playSound(150, 0.3, 'square'); }
+function playWinSound() {
+    [523, 659, 784, 1047].forEach((freq, i) => {
+        setTimeout(() => playSound(freq, 0.3), i * 150);
+    });
+}
 
+// Timer
 function startTimer(duration) {
     clearTimer();
     timeRemaining = duration / 1000;
@@ -136,7 +187,10 @@ function startTimer(duration) {
 }
 
 function clearTimer() {
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
 }
 
 function updateTimerDisplay() {
@@ -157,6 +211,7 @@ function updateTimerDisplay() {
     }
 }
 
+// Board
 function createBoard() {
     elements.board.innerHTML = '';
     for (let row = 0; row < 6; row++) {
@@ -174,9 +229,21 @@ function createBoard() {
 function handleCellClick(col) {
     playClickSound();
     const t = translations[currentLanguage];
-    if (!gameState.gameActive || gameState.winner) { showToast(t.gameNotActive); return; }
-    if (gameState.currentPlayer !== myColor) { playErrorSound(); showToast(t.notYourTurn); return; }
-    if (gameState.board[0][col] !== null) { playErrorSound(); showToast(t.columnFull); return; }
+    if (!gameState.gameActive || gameState.winner) {
+        playErrorSound();
+        showToast(t.gameNotActive, 'error');
+        return;
+    }
+    if (gameState.currentPlayer !== myColor) {
+        playErrorSound();
+        showToast(t.notYourTurn, 'error');
+        return;
+    }
+    if (gameState.board[0][col] !== null) {
+        playErrorSound();
+        showToast(t.columnFull, 'error');
+        return;
+    }
     socket.emit('dropPiece', { roomCode: currentRoom, column: col });
 }
 
@@ -189,10 +256,13 @@ function updateBoard() {
         cell.className = 'cell';
         if (value === null) cell.classList.add('empty');
         else cell.classList.add(value);
-        if (gameState.winningCells.some(([r, c]) => r === row && c === col)) cell.classList.add('winner');
+        if (gameState.winningCells.some(([r, c]) => r === row && c === col)) {
+            cell.classList.add('winner');
+        }
     });
 }
 
+// Turn Indicator
 function updateTurnIndicator() {
     const t = translations[currentLanguage];
     elements.turnIndicator.className = 'turn-indicator';
@@ -219,6 +289,7 @@ function updateTurnIndicator() {
     }
 }
 
+// Chat
 function sendChatMessage() {
     const message = elements.chatInput.value.trim();
     if (!message || !currentRoom) return;
@@ -231,16 +302,33 @@ function addChatMessage(data) {
     const isSystem = data.senderColor === 'system';
     const msgDiv = document.createElement('div');
     msgDiv.className = 'chat-message ' + (isSystem ? 'received' : (isSent ? 'sent' : 'received'));
+    
+    if (!isSystem) {
+        const senderSpan = document.createElement('span');
+        senderSpan.className = 'message-sender';
+        senderSpan.textContent = isSent ? 'You' : data.sender;
+        msgDiv.appendChild(senderSpan);
+    }
+    
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble' + (isSystem ? ' system-message' : '');
-    bubble.textContent = (isSent ? '' : data.sender + ': ') + data.message;
+    bubble.textContent = data.message;
     msgDiv.appendChild(bubble);
+    
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'message-time';
+    timeSpan.textContent = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    msgDiv.appendChild(timeSpan);
+    
     elements.chatMessages.appendChild(msgDiv);
     elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
-function clearChat() { elements.chatMessages.innerHTML = ''; }
+function clearChat() {
+    elements.chatMessages.innerHTML = '';
+}
 
+// Toast
 function showToast(message, type = 'error') {
     elements.toast.textContent = message;
     elements.toast.className = 'toast';
@@ -251,6 +339,7 @@ function showToast(message, type = 'error') {
     elements.toast.timeout = setTimeout(() => elements.toast.classList.remove('show'), 3000);
 }
 
+// Validation
 function validateName() {
     const t = translations[currentLanguage];
     const name = elements.playerNameInput.value.trim();
@@ -263,7 +352,7 @@ function validateName() {
         elements.nameError.style.color = '#ff4757';
         elements.playerNameInput.style.borderColor = '#ff4757';
         elements.playerNameInput.focus();
-        showToast(t.enterName);
+        showToast(t.enterName, 'error');
         playErrorSound();
         return false;
     }
@@ -272,30 +361,34 @@ function validateName() {
         elements.nameError.style.color = '#ff4757';
         elements.playerNameInput.style.borderColor = '#ff4757';
         elements.playerNameInput.focus();
-        showToast(t.nameTooShort);
+        showToast(t.nameTooShort, 'error');
         playErrorSound();
         return false;
     }
+    
     elements.nameError.textContent = '✅';
     elements.nameError.style.color = '#4CAF50';
     elements.playerNameInput.style.borderColor = '#4CAF50';
     return true;
 }
 
+// Screen
 function showScreen(name) {
     Object.keys(screens).forEach(k => screens[k].classList.remove('active'));
     screens[name].classList.add('active');
 }
 
+// Confetti
 function createConfetti() {
     elements.confettiContainer.innerHTML = '';
-    const colors = ['#FF4757', '#FFA502', '#4CAF50', '#6C63FF'];
-    for (let i = 0; i < 40; i++) {
+    const colors = ['#FF4757', '#FFA502', '#4CAF50', '#6C63FF', '#FF6B81', '#FFC048'];
+    for (let i = 0; i < 50; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
         confetti.style.left = Math.random() * 100 + '%';
-        confetti.style.background = colors[i % 4];
-        confetti.style.animationDelay = Math.random() + 's';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        confetti.style.animationDuration = (Math.random() * 1 + 1) + 's';
         elements.confettiContainer.appendChild(confetti);
     }
 }
@@ -312,7 +405,10 @@ elements.joinRoomBtn.addEventListener('click', () => {
     playClickSound();
     if (!validateName()) return;
     const code = elements.roomCodeInput.value.trim().toUpperCase();
-    if (code.length !== 6) { showToast(translations[currentLanguage].enterValidCode); return; }
+    if (code.length !== 6) {
+        showToast(translations[currentLanguage].enterValidCode, 'error');
+        return;
+    }
     myName = elements.playerNameInput.value.trim();
     socket.emit('joinRoom', { roomCode: code, playerName: myName });
 });
@@ -324,9 +420,27 @@ elements.playerNameInput.addEventListener('input', () => {
     }
 });
 
+elements.playerNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') elements.createRoomBtn.click();
+});
+
+elements.roomCodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') elements.joinRoomBtn.click();
+});
+
+elements.roomCodeInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+
 elements.sendMessageBtn.addEventListener('click', sendChatMessage);
-elements.chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
-elements.toggleChatBtn.addEventListener('click', () => { elements.chatBody.classList.toggle('collapsed'); });
+elements.chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendChatMessage();
+});
+
+elements.toggleChatBtn.addEventListener('click', () => {
+    elements.chatBody.classList.toggle('collapsed');
+    elements.toggleChatBtn.classList.toggle('collapsed');
+});
 
 elements.copyCodeBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(elements.roomCodeDisplay.textContent);
@@ -344,7 +458,7 @@ elements.restartBtn.addEventListener('click', () => {
 });
 
 elements.leaveBtn.addEventListener('click', () => {
-    if (confirm('Leave game?')) {
+    if (confirm(translations[currentLanguage].leave + '?')) {
         socket.emit('leaveRoom', currentRoom);
         showScreen('menu');
     }
@@ -363,13 +477,13 @@ elements.backToMenuBtn.addEventListener('click', () => {
 
 // Socket Events
 socket.on('connect', () => {
-    elements.connectionStatus.textContent = 'Connected';
+    elements.connectionStatus.textContent = translations[currentLanguage].connected;
     elements.connectionStatus.className = 'connection-status connected';
     setTimeout(() => elements.connectionStatus.style.display = 'none', 3000);
 });
 
 socket.on('disconnect', () => {
-    elements.connectionStatus.textContent = 'Disconnected';
+    elements.connectionStatus.textContent = translations[currentLanguage].disconnected;
     elements.connectionStatus.className = 'connection-status disconnected';
     elements.connectionStatus.style.display = 'block';
 });
@@ -397,8 +511,11 @@ socket.on('gameStart', (data) => {
     opponentNameStr = data.playerNames[myColor === 'red' ? 'yellow' : 'red'];
     elements.playerName.textContent = myName;
     elements.opponentName.textContent = opponentNameStr;
-    elements.playerScore.textContent = data.scores.red;
-    elements.opponentScore.textContent = data.scores.yellow;
+    
+    // Correct personalized scores
+    elements.playerScore.textContent = data.yourScore !== undefined ? data.yourScore : 0;
+    elements.opponentScore.textContent = data.opponentScore !== undefined ? data.opponentScore : 0;
+    
     elements.playerAvatarLetter.textContent = myName.charAt(0).toUpperCase();
     elements.opponentAvatarLetter.textContent = opponentNameStr.charAt(0).toUpperCase();
     clearChat();
@@ -407,7 +524,9 @@ socket.on('gameStart', (data) => {
     showScreen('game');
 });
 
-socket.on('timerStart', (data) => startTimer(data.duration));
+socket.on('timerStart', (data) => {
+    startTimer(data.duration);
+});
 
 socket.on('pieceDropped', (data) => {
     playDropSound();
@@ -416,9 +535,9 @@ socket.on('pieceDropped', (data) => {
     moveCount++;
     updateBoard();
     updateTurnIndicator();
-    elements.moveCount.textContent = 'Moves: ' + moveCount;
-    elements.lastMove.textContent = 'Last: Col ' + (data.column + 1);
-    if (data.autoPlaced) showToast(translations[currentLanguage].autoPlaced);
+    elements.moveCount.textContent = translations[currentLanguage].moves + ' ' + moveCount;
+    elements.lastMove.textContent = translations[currentLanguage].last + ' ' + translations[currentLanguage].column + ' ' + (data.column + 1);
+    if (data.autoPlaced) showToast(translations[currentLanguage].autoPlaced, 'error');
 });
 
 socket.on('gameOver', (data) => {
@@ -429,31 +548,37 @@ socket.on('gameOver', (data) => {
     updateBoard();
     updateTurnIndicator();
     elements.restartBtn.disabled = false;
-    elements.playerScore.textContent = data.scores.red;
-    elements.opponentScore.textContent = data.scores.yellow;
+    
+    // Correct personalized scores
+    elements.playerScore.textContent = data.yourScore !== undefined ? data.yourScore : 0;
+    elements.opponentScore.textContent = data.opponentScore !== undefined ? data.opponentScore : 0;
     
     if (data.winner === 'draw') {
         elements.gameOverEmoji.textContent = '🤝';
-        elements.gameOverTitle.textContent = 'Draw!';
+        elements.gameOverTitle.textContent = translations[currentLanguage].draw;
         elements.winnerName.textContent = '';
         elements.winnerAvatar.className = 'winner-avatar draw';
         elements.winnerAvatarLetter.textContent = '🤝';
     } else {
-        const winnerNameStr = data.winner === myColor ? myName : data.winnerName;
+        const winnerNameStr = data.isWinner ? myName : data.winnerName;
         elements.winnerAvatar.className = 'winner-avatar ' + data.winner;
         elements.winnerAvatarLetter.textContent = winnerNameStr.charAt(0).toUpperCase();
-        if (data.winner === myColor) {
+        
+        if (data.isWinner) {
+            playWinSound();
             elements.gameOverEmoji.textContent = '🏆';
-            elements.gameOverTitle.textContent = '🏆 WINNER! 🏆';
+            elements.gameOverTitle.textContent = '🏆 ' + translations[currentLanguage].winner + ' 🏆';
             elements.winnerName.textContent = myName;
-            elements.gameOverMessage.textContent = 'You won!';
+            elements.gameOverMessage.textContent = translations[currentLanguage].youWin + ' 🎉';
             createConfetti();
         } else {
             elements.gameOverEmoji.textContent = '😔';
-            elements.gameOverTitle.textContent = 'You Lost!';
+            elements.gameOverTitle.textContent = data.winnerName + ' ' + translations[currentLanguage].youLose;
             elements.winnerName.textContent = data.winnerName;
+            elements.gameOverMessage.textContent = data.winnerName + ' ' + translations[currentLanguage].youLose;
         }
     }
+    
     setTimeout(() => elements.gameOverModal.classList.add('active'), 1000);
 });
 
@@ -464,6 +589,13 @@ socket.on('gameRestarted', (data) => {
     gameState.winner = null;
     gameState.winningCells = [];
     moveCount = 0;
+    
+    // Keep correct scores after restart
+    if (data.scores) {
+        elements.playerScore.textContent = myColor === 'red' ? data.scores.red : data.scores.yellow;
+        elements.opponentScore.textContent = myColor === 'red' ? data.scores.yellow : data.scores.red;
+    }
+    
     updateBoard();
     updateTurnIndicator();
     elements.restartBtn.disabled = true;
@@ -475,11 +607,17 @@ socket.on('opponentLeft', () => {
     updateTurnIndicator();
 });
 
-socket.on('chatMessage', (data) => addChatMessage(data));
-socket.on('error', (message) => showToast(message));
+socket.on('chatMessage', (data) => {
+    addChatMessage(data);
+});
+
+socket.on('error', (message) => {
+    showToast(message, 'error');
+});
 
 // Initialize
 createBoard();
 showScreen('menu');
+loadLanguage();
 elements.playerNameInput.focus();
-console.log('Game initialized with 10-second timer');
+console.log('Connect Four initialized with correct score tracking');

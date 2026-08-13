@@ -13,9 +13,9 @@ const io = socketIO(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+const TURN_TIMER = 5000; // 5 seconds
 
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Connect Four server running' });
 });
@@ -48,36 +48,30 @@ function createGameRoom() {
         moveHistory: [],
         scores: { red: 0, yellow: 0 },
         chatMessages: [],
+        turnTimer: null,
+        turnDeadline: null,
         createdAt: new Date().toISOString()
     };
 }
 
 function checkWinner(board, row, col, player) {
-    const directions = [
-        [0, 1], [1, 0], [1, 1], [1, -1]
-    ];
-    
+    const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
     for (const [dx, dy] of directions) {
         const cells = [[row, col]];
-        
         for (let i = 1; i < 4; i++) {
             const newRow = row + (dx * i);
             const newCol = col + (dy * i);
-            if (newRow >= 0 && newRow < ROWS && newCol >= 0 && newCol < COLS && 
-                board[newRow][newCol] === player) {
+            if (newRow >= 0 && newRow < ROWS && newCol >= 0 && newCol < COLS && board[newRow][newCol] === player) {
                 cells.push([newRow, newCol]);
             } else break;
         }
-        
         for (let i = 1; i < 4; i++) {
             const newRow = row - (dx * i);
             const newCol = col - (dy * i);
-            if (newRow >= 0 && newRow < ROWS && newCol >= 0 && newCol < COLS && 
-                board[newRow][newCol] === player) {
+            if (newRow >= 0 && newRow < ROWS && newCol >= 0 && newCol < COLS && board[newRow][newCol] === player) {
                 cells.unshift([newRow, newCol]);
             } else break;
         }
-        
         if (cells.length >= 4) return cells;
     }
     return null;
@@ -92,6 +86,122 @@ function findLowestEmptyRow(board, col) {
         if (board[row][col] === null) return row;
     }
     return -1;
+}
+
+function getAvailableColumns(board) {
+    const columns = [];
+    for (let col = 0; col < COLS; col++) {
+        if (board[0][col] === null) columns.push(col);
+    }
+    return columns;
+}
+
+function autoPlaceDisc(roomCode) {
+    const gameRoom = gameRooms.get(roomCode);
+    if (!gameRoom || !gameRoom.gameActive || gameRoom.winner) return;
+    
+    const availableColumns = getAvailableColumns(gameRoom.board);
+    if (availableColumns.length === 0) return;
+    
+    const randomCol = availableColumns[Math.floor(Math.random() * availableColumns.length)];
+    const row = findLowestEmptyRow(gameRoom.board, randomCol);
+    if (row === -1) return;
+    
+    const currentPlayerColor = gameRoom.currentPlayer;
+    const playerName = gameRoom.playerNames[currentPlayerColor] || 'Player';
+    
+    gameRoom.board[row][randomCol] = currentPlayerColor;
+    gameRoom.moveHistory.push({ row, column: randomCol, player: currentPlayerColor, autoPlaced: true });
+    
+    const winningCells = checkWinner(gameRoom.board, row, randomCol, currentPlayerColor);
+    
+    if (winningCells) {
+        gameRoom.winner = currentPlayerColor;
+        gameRoom.winningCells = winningCells;
+        gameRoom.gameActive = false;
+        gameRoom.scores[currentPlayerColor]++;
+        clearTurnTimer(roomCode);
+        
+        io.to(roomCode).emit('gameOver', {
+            board: gameRoom.board,
+            winner: currentPlayerColor,
+            winnerName: playerName,
+            winningCells: winningCells,
+            player: currentPlayerColor,
+            scores: gameRoom.scores,
+            autoPlaced: true
+        });
+        
+        const systemMessage = {
+            sender: 'System',
+            senderColor: 'system',
+            message: `⏱️ ${playerName} ran out of time! Auto-placed and won!`,
+            timestamp: new Date().toISOString()
+        };
+        io.to(roomCode).emit('chatMessage', systemMessage);
+    } else if (isBoardFull(gameRoom.board)) {
+        gameRoom.winner = 'draw';
+        gameRoom.gameActive = false;
+        clearTurnTimer(roomCode);
+        
+        io.to(roomCode).emit('gameOver', {
+            board: gameRoom.board,
+            winner: 'draw',
+            winnerName: 'Draw',
+            winningCells: [],
+            player: null,
+            scores: gameRoom.scores,
+            autoPlaced: true
+        });
+    } else {
+        gameRoom.currentPlayer = gameRoom.currentPlayer === 'red' ? 'yellow' : 'red';
+        
+        io.to(roomCode).emit('pieceDropped', {
+            board: gameRoom.board,
+            currentPlayer: gameRoom.currentPlayer,
+            row: row,
+            column: randomCol,
+            player: currentPlayerColor,
+            autoPlaced: true
+        });
+        
+        const systemMessage = {
+            sender: 'System',
+            senderColor: 'system',
+            message: `⏱️ ${playerName} ran out of time! Auto-placed disc in column ${randomCol + 1}.`,
+            timestamp: new Date().toISOString()
+        };
+        io.to(roomCode).emit('chatMessage', systemMessage);
+        
+        startTurnTimer(roomCode);
+    }
+}
+
+function startTurnTimer(roomCode) {
+    const gameRoom = gameRooms.get(roomCode);
+    if (!gameRoom) return;
+    
+    clearTurnTimer(roomCode);
+    
+    gameRoom.turnDeadline = Date.now() + TURN_TIMER;
+    
+    io.to(roomCode).emit('timerStart', {
+        duration: TURN_TIMER,
+        deadline: gameRoom.turnDeadline
+    });
+    
+    gameRoom.turnTimer = setTimeout(() => {
+        autoPlaceDisc(roomCode);
+    }, TURN_TIMER);
+}
+
+function clearTurnTimer(roomCode) {
+    const gameRoom = gameRooms.get(roomCode);
+    if (gameRoom && gameRoom.turnTimer) {
+        clearTimeout(gameRoom.turnTimer);
+        gameRoom.turnTimer = null;
+        gameRoom.turnDeadline = null;
+    }
 }
 
 io.on('connection', (socket) => {
@@ -128,7 +238,6 @@ io.on('connection', (socket) => {
                 socket.emit('error', 'Room not found');
                 return;
             }
-            
             if (gameRoom.players.length >= 2) {
                 socket.emit('error', 'Room is full');
                 return;
@@ -152,16 +261,7 @@ io.on('connection', (socket) => {
                 chatMessages: gameRoom.chatMessages
             });
             
-            // Send system message
-            const systemMessage = {
-                sender: 'System',
-                senderColor: 'system',
-                message: `${socket.playerName} joined the game!`,
-                timestamp: new Date().toISOString()
-            };
-            gameRoom.chatMessages.push(systemMessage);
-            io.to(normalizedCode).emit('chatMessage', systemMessage);
-            
+            startTurnTimer(normalizedCode);
             console.log(`${socket.playerName} joined room ${normalizedCode}`);
         } catch (error) {
             console.error('Error joining room:', error);
@@ -175,21 +275,12 @@ io.on('connection', (socket) => {
             const gameRoom = gameRooms.get(roomCode);
             
             if (!gameRoom || !gameRoom.gameActive) return;
-            
             if (gameRoom.currentPlayer !== socket.playerColor) {
                 socket.emit('error', 'It is not your turn');
                 return;
             }
-            
-            if (gameRoom.winner) {
-                socket.emit('error', 'Game is over');
-                return;
-            }
-            
-            if (column < 0 || column >= COLS) {
-                socket.emit('error', 'Invalid column');
-                return;
-            }
+            if (gameRoom.winner) return;
+            if (column < 0 || column >= COLS) return;
             
             const row = findLowestEmptyRow(gameRoom.board, column);
             if (row === -1) {
@@ -197,8 +288,10 @@ io.on('connection', (socket) => {
                 return;
             }
             
+            clearTurnTimer(roomCode);
+            
             gameRoom.board[row][column] = socket.playerColor;
-            gameRoom.moveHistory.push({ row, column, player: socket.playerColor });
+            gameRoom.moveHistory.push({ row, column, player: socket.playerColor, autoPlaced: false });
             
             const winningCells = checkWinner(gameRoom.board, row, column, socket.playerColor);
             
@@ -216,7 +309,8 @@ io.on('connection', (socket) => {
                     winnerName: winnerName,
                     winningCells: winningCells,
                     player: socket.playerColor,
-                    scores: gameRoom.scores
+                    scores: gameRoom.scores,
+                    autoPlaced: false
                 });
             } else if (isBoardFull(gameRoom.board)) {
                 gameRoom.winner = 'draw';
@@ -228,7 +322,8 @@ io.on('connection', (socket) => {
                     winnerName: 'Draw',
                     winningCells: [],
                     player: null,
-                    scores: gameRoom.scores
+                    scores: gameRoom.scores,
+                    autoPlaced: false
                 });
             } else {
                 gameRoom.currentPlayer = gameRoom.currentPlayer === 'red' ? 'yellow' : 'red';
@@ -238,8 +333,11 @@ io.on('connection', (socket) => {
                     currentPlayer: gameRoom.currentPlayer,
                     row: row,
                     column: column,
-                    player: socket.playerColor
+                    player: socket.playerColor,
+                    autoPlaced: false
                 });
+                
+                startTurnTimer(roomCode);
             }
         } catch (error) {
             console.error('Error dropping piece:', error);
@@ -247,25 +345,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Chat message handler
     socket.on('sendMessage', (data) => {
         try {
             const { roomCode, message, senderName } = data;
             const gameRoom = gameRooms.get(roomCode);
-            
-            if (!gameRoom) {
-                socket.emit('error', 'Room not found');
-                return;
-            }
-            
-            if (!message || message.trim().length === 0) {
-                return;
-            }
-            
-            if (message.length > 200) {
-                socket.emit('error', 'Message too long (max 200 characters)');
-                return;
-            }
+            if (!gameRoom) return;
+            if (!message || message.trim().length === 0) return;
+            if (message.length > 200) return;
             
             const chatMessage = {
                 sender: socket.playerName || senderName || 'Unknown',
@@ -275,15 +361,11 @@ io.on('connection', (socket) => {
             };
             
             gameRoom.chatMessages.push(chatMessage);
-            
-            // Keep only last 50 messages
             if (gameRoom.chatMessages.length > 50) {
                 gameRoom.chatMessages = gameRoom.chatMessages.slice(-50);
             }
             
             io.to(roomCode).emit('chatMessage', chatMessage);
-            
-            console.log(`Chat [${roomCode}] ${chatMessage.sender}: ${chatMessage.message}`);
         } catch (error) {
             console.error('Error sending message:', error);
         }
@@ -293,6 +375,8 @@ io.on('connection', (socket) => {
         try {
             const gameRoom = gameRooms.get(roomCode);
             if (!gameRoom) return;
+            
+            clearTurnTimer(roomCode);
             
             gameRoom.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
             gameRoom.currentPlayer = 'red';
@@ -307,14 +391,7 @@ io.on('connection', (socket) => {
                 scores: gameRoom.scores
             });
             
-            // Send system message
-            const systemMessage = {
-                sender: 'System',
-                senderColor: 'system',
-                message: 'Game restarted!',
-                timestamp: new Date().toISOString()
-            };
-            io.to(roomCode).emit('chatMessage', systemMessage);
+            startTurnTimer(roomCode);
         } catch (error) {
             console.error('Error restarting game:', error);
         }
@@ -325,10 +402,10 @@ io.on('connection', (socket) => {
             const gameRoom = gameRooms.get(roomCode);
             if (!gameRoom) return;
             
-            const playerIndex = gameRoom.players.findIndex(p => p.id === socket.id);
+            clearTurnTimer(roomCode);
             
+            const playerIndex = gameRoom.players.findIndex(p => p.id === socket.id);
             if (playerIndex !== -1) {
-                const playerName = gameRoom.players[playerIndex].name;
                 gameRoom.players.splice(playerIndex, 1);
                 socket.leave(roomCode);
                 
@@ -337,15 +414,6 @@ io.on('connection', (socket) => {
                 } else {
                     gameRoom.gameActive = false;
                     io.to(roomCode).emit('opponentLeft');
-                    
-                    // Send system message
-                    const systemMessage = {
-                        sender: 'System',
-                        senderColor: 'system',
-                        message: `${playerName} left the game!`,
-                        timestamp: new Date().toISOString()
-                    };
-                    io.to(roomCode).emit('chatMessage', systemMessage);
                 }
             }
         } catch (error) {
@@ -358,9 +426,8 @@ io.on('connection', (socket) => {
         
         gameRooms.forEach((room, roomCode) => {
             const playerIndex = room.players.findIndex(p => p.id === socket.id);
-            
             if (playerIndex !== -1) {
-                const playerName = room.players[playerIndex].name;
+                clearTurnTimer(roomCode);
                 room.players.splice(playerIndex, 1);
                 
                 if (room.players.length === 0) {
@@ -368,14 +435,6 @@ io.on('connection', (socket) => {
                 } else {
                     room.gameActive = false;
                     io.to(roomCode).emit('opponentLeft');
-                    
-                    const systemMessage = {
-                        sender: 'System',
-                        senderColor: 'system',
-                        message: `${playerName} disconnected!`,
-                        timestamp: new Date().toISOString()
-                    };
-                    io.to(roomCode).emit('chatMessage', systemMessage);
                 }
             }
         });
@@ -384,4 +443,5 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`🎮 Connect Four server running on port ${PORT}`);
+    console.log(`⏱️ Turn timer: ${TURN_TIMER/1000} seconds`);
 });

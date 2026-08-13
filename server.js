@@ -47,6 +47,7 @@ function createGameRoom() {
         winningCells: [],
         moveHistory: [],
         scores: { red: 0, yellow: 0 },
+        chatMessages: [],
         createdAt: new Date().toISOString()
     };
 }
@@ -147,8 +148,19 @@ io.on('connection', (socket) => {
                 currentPlayer: gameRoom.currentPlayer,
                 playerNames: gameRoom.playerNames,
                 players: gameRoom.players.map(p => ({ color: p.color, name: p.name })),
-                scores: gameRoom.scores
+                scores: gameRoom.scores,
+                chatMessages: gameRoom.chatMessages
             });
+            
+            // Send system message
+            const systemMessage = {
+                sender: 'System',
+                senderColor: 'system',
+                message: `${socket.playerName} joined the game!`,
+                timestamp: new Date().toISOString()
+            };
+            gameRoom.chatMessages.push(systemMessage);
+            io.to(normalizedCode).emit('chatMessage', systemMessage);
             
             console.log(`${socket.playerName} joined room ${normalizedCode}`);
         } catch (error) {
@@ -235,6 +247,48 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Chat message handler
+    socket.on('sendMessage', (data) => {
+        try {
+            const { roomCode, message, senderName } = data;
+            const gameRoom = gameRooms.get(roomCode);
+            
+            if (!gameRoom) {
+                socket.emit('error', 'Room not found');
+                return;
+            }
+            
+            if (!message || message.trim().length === 0) {
+                return;
+            }
+            
+            if (message.length > 200) {
+                socket.emit('error', 'Message too long (max 200 characters)');
+                return;
+            }
+            
+            const chatMessage = {
+                sender: socket.playerName || senderName || 'Unknown',
+                senderColor: socket.playerColor || 'red',
+                message: message.trim(),
+                timestamp: new Date().toISOString()
+            };
+            
+            gameRoom.chatMessages.push(chatMessage);
+            
+            // Keep only last 50 messages
+            if (gameRoom.chatMessages.length > 50) {
+                gameRoom.chatMessages = gameRoom.chatMessages.slice(-50);
+            }
+            
+            io.to(roomCode).emit('chatMessage', chatMessage);
+            
+            console.log(`Chat [${roomCode}] ${chatMessage.sender}: ${chatMessage.message}`);
+        } catch (error) {
+            console.error('Error sending message:', error);
+        }
+    });
+
     socket.on('restartGame', (roomCode) => {
         try {
             const gameRoom = gameRooms.get(roomCode);
@@ -252,6 +306,15 @@ io.on('connection', (socket) => {
                 currentPlayer: gameRoom.currentPlayer,
                 scores: gameRoom.scores
             });
+            
+            // Send system message
+            const systemMessage = {
+                sender: 'System',
+                senderColor: 'system',
+                message: 'Game restarted!',
+                timestamp: new Date().toISOString()
+            };
+            io.to(roomCode).emit('chatMessage', systemMessage);
         } catch (error) {
             console.error('Error restarting game:', error);
         }
@@ -265,6 +328,7 @@ io.on('connection', (socket) => {
             const playerIndex = gameRoom.players.findIndex(p => p.id === socket.id);
             
             if (playerIndex !== -1) {
+                const playerName = gameRoom.players[playerIndex].name;
                 gameRoom.players.splice(playerIndex, 1);
                 socket.leave(roomCode);
                 
@@ -273,6 +337,15 @@ io.on('connection', (socket) => {
                 } else {
                     gameRoom.gameActive = false;
                     io.to(roomCode).emit('opponentLeft');
+                    
+                    // Send system message
+                    const systemMessage = {
+                        sender: 'System',
+                        senderColor: 'system',
+                        message: `${playerName} left the game!`,
+                        timestamp: new Date().toISOString()
+                    };
+                    io.to(roomCode).emit('chatMessage', systemMessage);
                 }
             }
         } catch (error) {
@@ -287,6 +360,7 @@ io.on('connection', (socket) => {
             const playerIndex = room.players.findIndex(p => p.id === socket.id);
             
             if (playerIndex !== -1) {
+                const playerName = room.players[playerIndex].name;
                 room.players.splice(playerIndex, 1);
                 
                 if (room.players.length === 0) {
@@ -294,6 +368,14 @@ io.on('connection', (socket) => {
                 } else {
                     room.gameActive = false;
                     io.to(roomCode).emit('opponentLeft');
+                    
+                    const systemMessage = {
+                        sender: 'System',
+                        senderColor: 'system',
+                        message: `${playerName} disconnected!`,
+                        timestamp: new Date().toISOString()
+                    };
+                    io.to(roomCode).emit('chatMessage', systemMessage);
                 }
             }
         });

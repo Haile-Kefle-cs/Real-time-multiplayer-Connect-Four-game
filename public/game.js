@@ -677,3 +677,57 @@ loadLanguage();
 elements.playerNameInput.focus();
 console.log('Connect Four initialized successfully');
 console.log('How to Play button:', elements.howToPlayBtn);
+// Add new elements
+const gameModeSelect = document.getElementById('gameModeSelect');
+const createSection = document.getElementById('createSection');
+const joinSection = document.getElementById('joinSection');
+const joinNameInput = document.getElementById('joinNameInput');
+const joinNameError = document.getElementById('joinNameError');
+const codeError = document.getElementById('codeError');
+
+// Dropdown change handler
+gameModeSelect.addEventListener('change', () => {
+    const selectedMode = gameModeSelect.value;
+    
+    // Hide both sections first
+    createSection.classList.add('hidden');
+    joinSection.classList.add('hidden');
+    
+    // Show selected section
+    if (selectedMode === 'create') {
+        createSection.classList.remove('hidden');
+        setTimeout(() => document.getElementById('playerNameInput').focus(), 100);
+    } else if (selectedMode === 'join') {
+        joinSection.classList.remove('hidden');
+        setTimeout(() => joinNameInput.focus(), 100);
+    }
+});
+
+// Create room - use playerNameInput from create section
+elements.createRoomBtn.addEventListener('click', () => {
+    playClickSound();
+    const name = elements.playerNameInput.value.trim();
+    if (name.length < 2) {
+        elements.nameError.textContent = translations[currentLanguage].nameRequired;
+        return;
+    }
+    myName = name;
+    socket.emit('createRoom', { playerName: myName });
+});
+
+// Join room - use joinNameInput from join section
+elements.joinRoomBtn.addEventListener('click', () => {
+    playClickSound();
+    const name = joinNameInput.value.trim();
+    if (name.length < 2) {
+        joinNameError.textContent = translations[currentLanguage].nameRequired;
+        return;
+    }
+    const code = elements.roomCodeInput.value.trim().toUpperCase();
+    if (code.length !== 6) {
+        codeError.textContent = translations[currentLanguage].enterValidCode;
+        return;
+    }
+    myName = name;
+    socket.emit('joinRoom', { roomCode: code, playerName: myName });
+});

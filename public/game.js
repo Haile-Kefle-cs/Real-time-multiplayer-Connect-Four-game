@@ -17,6 +17,9 @@ const elements = {
     copyCodeBtn: document.getElementById('copyCodeBtn'),
     cancelWaitBtn: document.getElementById('cancelWaitBtn'),
     howToPlayBtn: document.getElementById('howToPlayBtn'),
+    howToPlayModal: document.getElementById('howToPlayModal'),
+    closeHowToBtn: document.getElementById('closeHowToBtn'),
+    closeHowToTopBtn: document.getElementById('closeHowToTopBtn'),
     board: document.getElementById('board'),
     playerName: document.getElementById('playerName'),
     opponentName: document.getElementById('opponentName'),
@@ -133,11 +136,19 @@ const translations = {
 // Language
 window.setLanguage = function(lang) {
     currentLanguage = lang;
-    document.getElementById('langEn').classList.toggle('active', lang === 'en');
-    document.getElementById('langAm').classList.toggle('active', lang === 'am');
+    const langEn = document.getElementById('langEn');
+    const langAm = document.getElementById('langAm');
+    if (langEn && langAm) {
+        langEn.classList.toggle('active', lang === 'en');
+        langAm.classList.toggle('active', lang === 'am');
+    }
     document.querySelectorAll('[data-en][data-am]').forEach(el => {
         el.textContent = el.getAttribute(`data-${lang}`);
     });
+    const nameInput = document.getElementById('playerNameInput');
+    if (nameInput) {
+        nameInput.placeholder = nameInput.getAttribute(`data-${lang}-placeholder`) || '';
+    }
     updateTurnIndicator();
     localStorage.setItem('connectFourLanguage', lang);
 };
@@ -393,7 +404,44 @@ function createConfetti() {
     }
 }
 
-// Event Listeners
+// ============ EVENT LISTENERS ============
+
+// How to Play Button
+elements.howToPlayBtn.addEventListener('click', () => {
+    console.log('How to Play clicked');
+    playClickSound();
+    elements.howToPlayModal.classList.add('active');
+});
+
+// Close How to Play - Got it button
+elements.closeHowToBtn.addEventListener('click', () => {
+    playClickSound();
+    elements.howToPlayModal.classList.remove('active');
+});
+
+// Close How to Play - X button
+if (elements.closeHowToTopBtn) {
+    elements.closeHowToTopBtn.addEventListener('click', () => {
+        elements.howToPlayModal.classList.remove('active');
+    });
+}
+
+// Close modal when clicking outside
+elements.howToPlayModal.addEventListener('click', (e) => {
+    if (e.target === elements.howToPlayModal) {
+        elements.howToPlayModal.classList.remove('active');
+    }
+});
+
+// Close with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        elements.howToPlayModal.classList.remove('active');
+        elements.gameOverModal.classList.remove('active');
+    }
+});
+
+// Create Room
 elements.createRoomBtn.addEventListener('click', () => {
     playClickSound();
     if (!validateName()) return;
@@ -401,6 +449,7 @@ elements.createRoomBtn.addEventListener('click', () => {
     socket.emit('createRoom', { playerName: myName });
 });
 
+// Join Room
 elements.joinRoomBtn.addEventListener('click', () => {
     playClickSound();
     if (!validateName()) return;
@@ -413,6 +462,7 @@ elements.joinRoomBtn.addEventListener('click', () => {
     socket.emit('joinRoom', { roomCode: code, playerName: myName });
 });
 
+// Name input
 elements.playerNameInput.addEventListener('input', () => {
     if (elements.playerNameInput.value.trim().length > 0) {
         elements.nameError.textContent = '';
@@ -432,6 +482,7 @@ elements.roomCodeInput.addEventListener('input', (e) => {
     e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 });
 
+// Chat
 elements.sendMessageBtn.addEventListener('click', sendChatMessage);
 elements.chatInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendChatMessage();
@@ -442,21 +493,25 @@ elements.toggleChatBtn.addEventListener('click', () => {
     elements.toggleChatBtn.classList.toggle('collapsed');
 });
 
+// Copy Code
 elements.copyCodeBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(elements.roomCodeDisplay.textContent);
     showToast(translations[currentLanguage].codeCopied, 'success');
 });
 
+// Cancel Wait
 elements.cancelWaitBtn.addEventListener('click', () => {
     socket.emit('leaveRoom', currentRoom);
     showScreen('menu');
 });
 
+// Restart
 elements.restartBtn.addEventListener('click', () => {
     socket.emit('restartGame', currentRoom);
     elements.restartBtn.disabled = true;
 });
 
+// Leave
 elements.leaveBtn.addEventListener('click', () => {
     if (confirm(translations[currentLanguage].leave + '?')) {
         socket.emit('leaveRoom', currentRoom);
@@ -464,18 +519,21 @@ elements.leaveBtn.addEventListener('click', () => {
     }
 });
 
+// Play Again
 elements.playAgainBtn.addEventListener('click', () => {
     elements.gameOverModal.classList.remove('active');
     socket.emit('restartGame', currentRoom);
 });
 
+// Back to Menu
 elements.backToMenuBtn.addEventListener('click', () => {
     elements.gameOverModal.classList.remove('active');
     socket.emit('leaveRoom', currentRoom);
     showScreen('menu');
 });
 
-// Socket Events
+// ============ SOCKET EVENTS ============
+
 socket.on('connect', () => {
     elements.connectionStatus.textContent = translations[currentLanguage].connected;
     elements.connectionStatus.className = 'connection-status connected';
@@ -512,7 +570,6 @@ socket.on('gameStart', (data) => {
     elements.playerName.textContent = myName;
     elements.opponentName.textContent = opponentNameStr;
     
-    // Correct personalized scores
     elements.playerScore.textContent = data.yourScore !== undefined ? data.yourScore : 0;
     elements.opponentScore.textContent = data.opponentScore !== undefined ? data.opponentScore : 0;
     
@@ -549,7 +606,6 @@ socket.on('gameOver', (data) => {
     updateTurnIndicator();
     elements.restartBtn.disabled = false;
     
-    // Correct personalized scores
     elements.playerScore.textContent = data.yourScore !== undefined ? data.yourScore : 0;
     elements.opponentScore.textContent = data.opponentScore !== undefined ? data.opponentScore : 0;
     
@@ -590,7 +646,6 @@ socket.on('gameRestarted', (data) => {
     gameState.winningCells = [];
     moveCount = 0;
     
-    // Keep correct scores after restart
     if (data.scores) {
         elements.playerScore.textContent = myColor === 'red' ? data.scores.red : data.scores.yellow;
         elements.opponentScore.textContent = myColor === 'red' ? data.scores.yellow : data.scores.red;
@@ -615,9 +670,10 @@ socket.on('error', (message) => {
     showToast(message, 'error');
 });
 
-// Initialize
+// ============ INITIALIZE ============
 createBoard();
 showScreen('menu');
 loadLanguage();
 elements.playerNameInput.focus();
-console.log('Connect Four initialized with correct score tracking');
+console.log('Connect Four initialized successfully');
+console.log('How to Play button:', elements.howToPlayBtn);
